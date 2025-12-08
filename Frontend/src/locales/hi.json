@@ -1,0 +1,179 @@
+{
+  "common": {
+    "appName": "क्योरऑन",
+    "welcome": "स्वागत है",
+    "loading": "लोड हो रहा है...",
+    "error": "त्रुटि",
+    "success": "सफलता",
+    "cancel": "रद्द करें",
+    "save": "सहेजें",
+    "delete": "हटाएं",
+    "edit": "संपादित करें",
+    "submit": "जमा करें",
+    "close": "बंद करें",
+    "back": "वापस",
+    "next": "आगे",
+    "search": "खोजें",
+    "filter": "फ़िल्टर",
+    "all": "सभी",
+    "yes": "हाँ",
+    "no": "नहीं"
+  },
+  "auth": {
+    "login": "लॉगिन",
+    "signup": "साइन अप",
+    "logout": "लॉगआउट",
+    "email": "ईमेल",
+    "password": "पासवर्ड",
+    "confirmPassword": "पासवर्ड की पुष्टि करें",
+    "forgotPassword": "पासवर्ड भूल गए?",
+    "rememberMe": "मुझे याद रखें",
+    "loginSuccess": "लॉगिन सफल!",
+    "signupSuccess": "खाता सफलतापूर्वक बनाया गया!",
+    "logoutSuccess": "सफलतापूर्वक लॉगआउट!"
+  },
+  "navbar": {
+    "home": "होम",
+    "appointments": "अपॉइंटमेंट",
+    "prescriptions": "प्रिस्क्रिप्शन",
+    "doctors": "डॉक्टर",
+    "profile": "प्रोफ़ाइल",
+    "dashboard": "डैशबोर्ड",
+    "analysis": "विश्लेषण",
+    "chat": "चैट",
+    "medicines": "दवाइयाँ"
+  },
+  "appointment": {
+    "title": "अपॉइंटमेंट",
+    "bookAppointment": "अपॉइंटमेंट बुक करें",
+    "myAppointments": "मेरे अपॉइंटमेंट",
+    "selectDoctor": "डॉक्टर चुनें",
+    "selectDate": "तारीख चुनें",
+    "selectTime": "समय स्लॉट चुनें",
+    "symptoms": "लक्षण",
+    "description": "विवरण",
+    "describeSymptoms": "अपने लक्षण / अपॉइंटमेंट का कारण बताएं",
+    "recordAudio": "ऑडियो रिकॉर्ड करें",
+    "playAudio": "ऑडियो चलाएं",
+    "pauseAudio": "ऑडियो रोकें",
+    "audioRecorded": "ऑडियो रिकॉर्ड किया गया",
+    "typeOrRecord": "आप टाइप कर सकते हैं या ऑडियो रिकॉर्ड कर सकते हैं (कम से कम एक आवश्यक)",
+    "bookingSuccess": "अपॉइंटमेंट सफलतापूर्वक बुक किया गया!",
+    "bookingError": "अपॉइंटमेंट बुक करने में विफल",
+    "noSlots": "इस तारीख के लिए कोई स्लॉट उपलब्ध नहीं",
+    "allSlotsBooked": "इस तारीख के लिए सभी स्लॉट बुक हैं",
+    "selectDifferentDate": "कृपया एक अलग तारीख चुनें",
+    "slotsAvailable": "स्लॉट उपलब्ध",
+    "bookedSlotsHidden": "(बुक किए गए स्लॉट छिपे हुए हैं)",
+    "status": {
+      "pending": "लंबित",
+      "confirmed": "पुष्टि की गई",
+      "completed": "पूर्ण",
+      "cancelled": "रद्द",
+      "missed": "छूट गया"
+    },
+    "actions": {
+      "joinCall": "कॉल में शामिल हों",
+      "acceptAppointment": "अपॉइंटमेंट स्वीकार करें",
+      "markCompleted": "पूर्ण के रूप में चिह्नित करें",
+      "cancelAppointment": "अपॉइंटमेंट रद्द करें",
+      "createPrescription": "प्रिस्क्रिप्शन बनाएं"
+    }
+  },
+  "prescription": {
+    "title": "प्रिस्क्रिप्शन",
+    "createPrescription": "प्रिस्क्रिप्शन बनाएं",
+    "myPrescriptions": "मेरे प्रिस्क्रिप्शन",
+    "diagnosis": "निदान",
+    "medications": "दवाइयाँ",
+    "addMedication": "दवा जोड़ें",
+    "medicineName": "दवा का नाम",
+    "dosage": "खुराक",
+    "frequency": "आवृत्ति",
+    "duration": "अवधि",
+    "instructions": "निर्देश",
+    "downloadPDF": "PDF डाउनलोड करें",
+    "prescriptionNumber": "प्रिस्क्रिप्शन #"
+  },
+  "doctor": {
+    "title": "डॉक्टर",
+    "findDoctor": "डॉक्टर खोजें",
+    "speciality": "विशेषज्ञता",
+    "experience": "अनुभव",
+    "availability": "उपलब्धता",
+    "bookNow": "अभी बुक करें",
+    "viewProfile": "प्रोफ़ाइल देखें"
+  },
+  "profile": {
+    "title": "प्रोफ़ाइल",
+    "editProfile": "प्रोफ़ाइल संपादित करें",
+    "personalInfo": "व्यक्तिगत जानकारी",
+    "name": "नाम",
+    "email": "ईमेल",
+    "phone": "फोन",
+    "age": "उम्र",
+    "gender": "लिंग",
+    "address": "पता",
+    "updateSuccess": "प्रोफ़ाइल सफलतापूर्वक अपडेट किया गया!",
+    "updateError": "प्रोफ़ाइल अपडेट करने में विफल"
+  },
+  "validation": {
+    "required": "यह फ़ील्ड आवश्यक है",
+    "emailInvalid": "कृपया एक मान्य ईमेल दर्ज करें",
+    "passwordMin": "पासवर्ड कम से कम 8 अक्षरों का होना चाहिए",
+    "passwordMatch": "पासवर्ड मेल नहीं खाते",
+    "phoneInvalid": "कृपया एक मान्य फोन नंबर दर्ज करें",
+    "minLength": "न्यूनतम {{count}} अक्षर आवश्यक",
+    "maxLength": "अधिकतम {{count}} अक्षर अनुमत"
+  },
+  "messages": {
+    "noData": "कोई डेटा उपलब्ध नहीं",
+    "noResults": "कोई परिणाम नहीं मिला",
+    "tryAgain": "कृपया पुनः प्रयास करें",
+    "somethingWrong": "कुछ गलत हो गया",
+    "confirmDelete": "क्या आप वाकई इसे हटाना चाहते हैं?",
+    "confirmCancel": "क्या आप वाकई रद्द करना चाहते हैं?"
+  },
+  "landing": {
+    "ourServices": "हमारी सेवाएं",
+    "servicesSubtitle": "आपकी उंगलियों पर व्यापक स्वास्थ्य सेवा समाधान",
+    "services": {
+      "doctorConsult": {
+        "title": "डॉक्टर परामर्श",
+        "description": "तत्काल परामर्श के लिए योग्य डॉक्टरों से जुड़ें"
+      },
+      "analysis": {
+        "title": "विश्लेषण",
+        "description": "AI-संचालित चिकित्सा विश्लेषण और अंतर्दृष्टि प्राप्त करें"
+      },
+      "healthTips": {
+        "title": "स्वास्थ्य सुझाव",
+        "description": "स्वस्थ जीवनशैली के लिए दैनिक कल्याण सुझाव"
+      },
+      "medicineChecker": {
+        "title": "दवा जांचकर्ता",
+        "description": "दवा की जानकारी और इंटरैक्शन की जांच करें"
+      }
+    },
+    "aiAssistant": {
+      "title": "AI सहायक से बात करें",
+      "name": "आरोग्य AI चिकित्सा सहायक",
+      "description": "हमारे AI स्वास्थ्य सहायक के साथ चैट शुरू करने के लिए यहां क्लिक करें"
+    },
+    "cta": {
+      "title": "शुरू करने के लिए तैयार हैं?",
+      "subtitle": "हजारों उपयोगकर्ताओं में शामिल हों जो अपनी स्वास्थ्य सेवा के लिए क्योरऑन पर भरोसा करते हैं",
+      "button": "अभी साइन अप करें"
+    }
+  },
+  "footer": {
+    "aboutUs": "हमारे बारे में",
+    "contactUs": "संपर्क करें",
+    "privacyPolicy": "गोपनीयता नीति",
+    "termsOfService": "सेवा की शर्तें",
+    "followUs": "हमें फॉलो करें",
+    "allRightsReserved": "सर्वाधिकार सुरक्षित",
+    "helpCenter": "सहायता केंद्र",
+    "faq": "अक्सर पूछे जाने वाले प्रश्न"
+  }
+}

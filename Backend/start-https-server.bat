@@ -1,0 +1,3 @@
+@echo off
+echo Starting HTTPS Backend Server...
+node https-server.js

@@ -1,0 +1,336 @@
+import React, { useState, useEffect, useRef } from 'react';
+import io from 'socket.io-client';
+import './styles/chat.css';
+import { useSelector, useDispatch } from 'react-redux';
+import { UserCircle2, MessageSquare, Send, Mail, MapPin } from 'lucide-react';
+import { allDoctors } from '../../actions/appointmentActions';
+import { useFilter } from '../../context/FilterContext';
+import AppointmentBooking from '../AppointmentBooking';
+
+const Chat = () => {
+    const { user } = useSelector((state) => state.user);
+    const { doctors } = useSelector((state) => state.allDoctors);
+    const dispatch = useDispatch();
+    const { womenOnlyFilter, toggleWomenOnlyFilter } = useFilter();
+    const [message, setMessage] = useState('');
+    const [messages, setMessages] = useState([]);
+    const [joined, setJoined] = useState(false);
+    const [socket, setSocket] = useState(null);
+    const [currentRoom, setCurrentRoom] = useState('');
+    const messagesEndRef = useRef(null);
+    const [showBookingModal, setShowBookingModal] = useState(false);
+    const [selectedDoctorForBooking, setSelectedDoctorForBooking] = useState(null);
+
+    useEffect(() => {
+        // Connect to backend server on port 5001 with /chat namespace
+        const backendUrl = 'http://localhost:5001';
+        
+        console.log('🔌 Connecting to chat socket:', backendUrl + '/chat');
+        
+        const newSocket = io(backendUrl + '/chat', {
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionAttempts: 5,
+            withCredentials: true
+        });
+
+        setSocket(newSocket);
+
+        // If user is a doctor, automatically join their email room
+        if (user.role === 'doctor') {
+            const doctorRoom = user.contact || user.email;
+            console.log('Doctor joining room:', doctorRoom);
+            newSocket.emit('join-room', doctorRoom);
+            setJoined(true);
+            setCurrentRoom(doctorRoom);
+        } else {
+            // If user is a patient, fetch available doctors
+            dispatch(allDoctors());
+        }
+
+        newSocket.on('connect', () => {
+            console.log('✅ Chat socket connected:', newSocket.id);
+            console.log('🔗 Socket URL:', socketUrl);
+        });
+
+        newSocket.on('connect_error', (error) => {
+            console.error('❌ Chat socket connection error:', error);
+            console.error('🔗 Attempted URL:', socketUrl);
+        });
+
+        newSocket.on('disconnect', (reason) => {
+            console.warn('⚠️ Chat socket disconnected:', reason);
+        });
+
+        newSocket.on('reconnect', (attemptNumber) => {
+            console.log('🔄 Chat socket reconnected after', attemptNumber, 'attempts');
+        });
+
+        return () => newSocket.disconnect();
+    }, [user]);
+
+    useEffect(() => {
+        if (!socket) return;
+
+        socket.on('message', (message) => {
+            console.log('📨 Message received:', message);
+            setMessages(prevMessages => [...prevMessages, message]);
+        });
+
+        socket.on('room-full', () => {
+            console.warn('⚠️ Room is full');
+            alert('Room is full. Please try another room.');
+            setJoined(false);
+        });
+
+        socket.on('joined-room', ({ roomId, users }) => {
+            console.log(`✅ Successfully joined room ${roomId}. Users in room: ${users}`);
+        });
+
+        return () => {
+            socket.off('message');
+            socket.off('room-full');
+            socket.off('joined-room');
+        };
+    }, [socket]);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
+    const joinDoctorRoom = (doctorEmail) => {
+        console.log('🚪 Joining doctor room:', doctorEmail);
+        if (!socket || !socket.connected) {
+            console.error('❌ Socket not connected!');
+            alert('Connection error. Please refresh the page.');
+            return;
+        }
+        socket.emit('join-room', doctorEmail);
+        setJoined(true);
+        setCurrentRoom(doctorEmail);
+        console.log('✅ Join room request sent');
+    };
+
+    const sendMessage = (e) => {
+        e.preventDefault();
+        if (!message.trim()) return;
+        
+        console.log('📤 Sending message:', { roomId: currentRoom, text: message, socketId: socket?.id });
+        
+        if (!socket || !socket.connected) {
+            console.error('❌ Socket not connected!');
+            alert('Connection lost. Please refresh the page.');
+            return;
+        }
+        
+        socket.emit('user-message', { roomId: currentRoom, text: message });
+        setMessage('');
+    };
+
+    return (
+        <div className="chat-container min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
+            {!joined ? (
+                user.role === 'user' ? (
+                    <div className="max-w-7xl mx-auto">
+                        <div className="flex flex-col items-center mb-4 md:mb-8">
+                            <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-6 text-center">
+                                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-800">
+                                    Available Doctors
+                                </span>
+                            </h1>
+                            
+                            {/* Women Only Filter Button */}
+                            <button
+                                type="button"
+                                onClick={toggleWomenOnlyFilter}
+                                className={`group flex items-center space-x-2 px-4 md:px-5 py-2 md:py-2.5 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                                    womenOnlyFilter
+                                        ? 'bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-lg shadow-pink-500/50 ring-2 ring-pink-300'
+                                        : 'bg-gradient-to-r from-pink-400 to-pink-500 text-white shadow-md hover:shadow-lg'
+                                }`}
+                            >
+                                <svg 
+                                    className="w-4 h-4 md:w-5 md:h-5" 
+                                    fill="currentColor" 
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path d="M12 2C10.34 2 9 3.34 9 5s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zm0 8c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                                </svg>
+                                <span className="text-xs md:text-sm font-semibold">Women Doctors Only</span>
+                                {womenOnlyFilter && (
+                                    <svg className="w-4 h-4 md:w-5 md:h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                    </svg>
+                                )}
+                            </button>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 lg:gap-8">
+                            {doctors && doctors.filter(doctor => !womenOnlyFilter || doctor.gender === 'female').map((doctor) => (
+                                <div 
+                                    key={doctor._id} 
+                                    className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-gray-200 overflow-hidden"
+                                >
+                                    {/* Mobile Layout - Image on Right */}
+                                    <div className="flex lg:hidden p-3">
+                                        {/* Left Side - Doctor Info */}
+                                        <div className="flex-1 pr-3">
+                                            <h2 className="text-base font-bold text-gray-900 mb-1 line-clamp-1">{doctor.name}</h2>
+                                            <div className="space-y-1 text-xs text-gray-600">
+                                                <div className="flex items-center">
+                                                    <span className="font-medium text-gray-500 w-16">Age:</span>
+                                                    <span className="font-semibold">{doctor.age || 'N/A'}</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <span className="font-medium text-gray-500 w-16">Gender:</span>
+                                                    <span className="font-semibold capitalize">{doctor.gender || 'N/A'}</span>
+                                                </div>
+                                                <div className="flex items-start">
+                                                    <span className="font-medium text-gray-500 w-16 flex-shrink-0">Specialty:</span>
+                                                    <span className="font-semibold text-blue-600 line-clamp-2">{doctor.speciality}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Right Side - Image and Button */}
+                                        <div className="flex flex-col items-center space-y-2">
+                                            <img
+                                                src={"https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=200&h=200"}
+                                                alt={doctor.name}
+                                                className="w-20 h-20 rounded-lg object-cover border-2 border-blue-100 shadow-sm"
+                                            />
+                                            <button 
+                                                onClick={() => {
+                                                    setSelectedDoctorForBooking(doctor);
+                                                    setShowBookingModal(true);
+                                                }}
+                                                className="w-20 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-1.5 px-2 rounded-lg text-[10px] font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-200 active:scale-95 shadow-sm"
+                                            >
+                                                Book
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Desktop/Tablet Layout - Original Centered Design */}
+                                    <div className="hidden lg:block p-6">
+                                        <div className="flex flex-col items-center">
+                                            <img
+                                                src={"https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300&h=300"}
+                                                alt={doctor.name}
+                                                className="w-24 h-24 rounded-full object-cover border-4 border-blue-50 shadow-lg mb-4"
+                                            />
+                                            <h2 className="text-xl font-bold text-gray-900 mb-1">{doctor.name}</h2>
+                                            <p className="text-sm text-gray-500 mb-3">{doctor.age ? `${doctor.age} years` : ''} {doctor.gender ? `• ${doctor.gender}` : ''}</p>
+                                            <div className="space-y-2 w-full">
+                                                <div className="flex items-center justify-center text-gray-600 text-sm bg-blue-50 rounded-lg px-4 py-2">
+                                                    <Mail className="h-4 w-4 mr-2 text-blue-600" />
+                                                    <span className="truncate">{doctor.contact}</span>
+                                                </div>
+                                                <div className="flex items-center justify-center text-gray-700 text-sm bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg px-4 py-2.5 border border-blue-100">
+                                                    <MapPin className="h-4 w-4 mr-2 text-blue-600" />
+                                                    <span className="font-semibold">{doctor.speciality}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => {
+                                                setSelectedDoctorForBooking(doctor);
+                                                setShowBookingModal(true);
+                                            }}
+                                            className="mt-6 w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-6 rounded-xl text-sm font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-lg flex items-center justify-center space-x-2"
+                                        >
+                                            <MessageSquare className="h-4 w-4" />
+                                            <span>Book Appointment</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+                        <p className="text-xl text-gray-600 bg-white p-8 rounded-lg shadow-md">Waiting for patients to connect...</p>
+                    </div>
+                )
+            ) : (
+                <div className="max-w-4xl mx-auto h-[80vh] p-4 flex flex-col">
+                    <div className="bg-white rounded-xl shadow-xl flex-1 flex flex-col overflow-hidden">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white p-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-2xl font-bold">Telemedicine Chat</h2>
+                                    <p className="text-blue-100 mt-1">Room: {currentRoom}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="font-semibold text-lg">{user.name}</p>
+                                    <p className="text-blue-100">
+                                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                                        {user.specialization && ` - ${user.specialization}`}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Messages */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50">
+                            {messages.map((msg, index) => (
+                                <div
+                                    key={index}
+                                    className={`flex ${msg.sender === socket.id ? 'justify-end' : 'justify-start'}`}
+                                >
+                                    <div
+                                        className={`max-w-xs md:max-w-md rounded-2xl p-4 shadow-md ${
+                                            msg.sender === socket.id
+                                                ? 'bg-gradient-to-r from-blue-900 to-blue-700 text-white'
+                                                : 'bg-white text-gray-800'
+                                        }`}
+                                    >
+                                        <p className="text-[15px] leading-relaxed">{msg.text}</p>
+                                        <p className={`text-xs mt-2 ${msg.sender === socket.id ? 'text-blue-100' : 'text-gray-500'}`}>
+                                            {new Date().toLocaleTimeString()}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                            <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* Message Input */}
+                        <form onSubmit={sendMessage} className="p-4 bg-white border-t border-gray-100">
+                            <div className="flex space-x-3">
+                                <input
+                                    type="text"
+                                    className="flex-1 rounded-lg border-gray-200 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 py-2.5"
+                                    placeholder="Type your message..."
+                                    value={message}
+                                    onChange={(e) => setMessage(e.target.value)}
+                                />
+                                <button
+                                    type="submit"
+                                    className="px-5 py-2.5 bg-gradient-to-r from-blue-900 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-md hover:shadow-lg"
+                                >
+                                    <Send className="h-5 w-5" />
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Appointment Booking Modal */}
+            {showBookingModal && (
+                <AppointmentBooking 
+                    onClose={() => {
+                        setShowBookingModal(false);
+                        setSelectedDoctorForBooking(null);
+                    }}
+                    preSelectedDoctor={selectedDoctorForBooking}
+                />
+            )}
+        </div>
+    );
+};
+
+export default Chat;

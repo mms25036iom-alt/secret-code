@@ -1,0 +1,62 @@
+import { thunk } from 'redux-thunk'
+import { createStore, combineReducers, applyMiddleware } from 'redux'
+import { composeWithDevTools } from 'redux-devtools-extension'
+
+import storage from 'redux-persist/lib/storage';
+import { persistReducer, persistStore } from 'redux-persist';  // redux-persist for storing data in state
+
+import { allUsersReducer, profileReducer, userDetailsReducer, userReducer } from './reducers/userReducer';
+import { allDoctorsReducer, newAppointmentReducer, myAppointmentReducer, availableSlotsReducer, updateAppointmentStatusReducer } from './reducers/appointmentReducer';
+import { prescriptionReducer } from './reducers/prescriptionReducer';
+import { 
+    pharmacyRegisterReducer, 
+    pharmacyDetailsReducer, 
+    myPharmacyReducer, 
+    pharmacyUpdateReducer, 
+    pharmacyStatsReducer,
+    pharmacyMedicinesReducer,
+    medicineOperationReducer,
+    lowStockMedicinesReducer,
+    expiringMedicinesReducer,
+    pharmacyOrdersReducer
+} from './reducers/pharmacyReducers';
+
+const persistConfig = {
+    key: 'root',
+    storage,
+    whitelist: ['user'] // Only persist user state
+}
+
+const persistCombineReducer = combineReducers({
+    user: userReducer,
+    profile: profileReducer,
+    allUsers: allUsersReducer,
+    userDetails: userDetailsReducer,
+    newAppointment: newAppointmentReducer,
+    myAppointment: myAppointmentReducer,
+    updateAppointmentStatus: updateAppointmentStatusReducer,
+    // appointmentDetails: appointmentDetailsReducer,
+    // allAppointment: allAppointmentReducer,
+    allDoctors: allDoctorsReducer,
+    availableSlots: availableSlotsReducer,
+    prescription: prescriptionReducer,
+    // Pharmacy reducers
+    pharmacyRegister: pharmacyRegisterReducer,
+    pharmacyDetails: pharmacyDetailsReducer,
+    myPharmacy: myPharmacyReducer,
+    pharmacyUpdate: pharmacyUpdateReducer,
+    pharmacyStats: pharmacyStatsReducer,
+    pharmacyMedicines: pharmacyMedicinesReducer,
+    medicineOperation: medicineOperationReducer,
+    lowStockMedicines: lowStockMedicinesReducer,
+    expiringMedicines: expiringMedicinesReducer,
+    pharmacyOrders: pharmacyOrdersReducer,
+}); // To combine multiple reducers in one
+
+const persistedReducer = persistReducer(persistConfig, persistCombineReducer)
+
+let initialState = {};
+const middleware = [thunk];
+
+export const persistReduxStore = createStore(persistedReducer, initialState, composeWithDevTools(applyMiddleware(...middleware)));
+export const persistor = persistStore(persistReduxStore);

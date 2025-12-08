@@ -1,0 +1,3 @@
+@echo off
+echo Starting HTTPS Socket Server...
+node https-socketServer.js
