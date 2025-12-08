@@ -36,6 +36,8 @@ const LoginSignupOTP = () => {
   const [countdown, setCountdown] = useState(0);
   const [localError, setLocalError] = useState("");
   const [localLoading, setLocalLoading] = useState(false);
+  const [showOtpPopup, setShowOtpPopup] = useState(false);
+  const [displayOtp, setDisplayOtp] = useState("");
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -94,11 +96,33 @@ const LoginSignupOTP = () => {
         { phone: formData.phone }
       );
 
-      console.log("✅ OTP sent:", data);
+      console.log("✅ OTP Response:", data);
+      
+      // Show OTP if available (development mode or SMS failed) - EXACTLY like CureConnect
+      if (data.otp) {
+        console.log("🔐 Your OTP is:", data.otp);
+        
+        // Show alert with OTP - EXACTLY like CureConnect
+        const otpMessage = `🔐 YOUR OTP CODE\n\n${data.otp}\n\nValid for 10 minutes\n\n${data.message}`;
+        alert(otpMessage);
+        
+        // Auto-fill OTP in development - EXACTLY like CureConnect
+        setFormData(prev => ({ ...prev, otp: data.otp }));
+        
+        // Also show in custom popup for better UX
+        setDisplayOtp(data.otp);
+        setShowOtpPopup(true);
+      }
+      
       setOtpSent(true);
       setIsNewUser(data.isNewUser);
       setStep("otp");
       setCountdown(60);
+      
+      // Show success message if no OTP in response
+      if (!data.otp) {
+        alert(`✅ ${data.message}\n\nPlease check your phone for the OTP.`);
+      }
     } catch (error) {
       console.error("❌ OTP send failed:", error);
       setLocalError(
@@ -254,6 +278,62 @@ const LoginSignupOTP = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center p-4">
+      {/* OTP Popup Modal */}
+      {showOtpPopup && displayOtp && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black bg-opacity-50 animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full animate-scale-in">
+            {/* Icon */}
+            <div className="flex justify-center mb-6">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full blur-xl opacity-50"></div>
+                <div className="relative bg-gradient-to-br from-green-400 to-emerald-400 p-6 rounded-full">
+                  <Lock size={48} className="text-white" />
+                </div>
+              </div>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-3xl font-bold text-gray-800 text-center mb-2">
+              Your OTP Code
+            </h3>
+            <p className="text-gray-500 text-center mb-8">
+              Use this code to verify your account
+            </p>
+
+            {/* OTP Display */}
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-6 mb-6 border-2 border-blue-200">
+              <div className="flex justify-center items-center space-x-3">
+                {displayOtp.split('').map((digit, index) => (
+                  <div
+                    key={index}
+                    className="w-12 h-14 bg-white rounded-xl flex items-center justify-center shadow-lg border-2 border-blue-300"
+                  >
+                    <span className="text-3xl font-bold text-blue-600">{digit}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Info */}
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg mb-6">
+              <p className="text-sm text-yellow-800">
+                <strong>⏰ Valid for 10 minutes</strong>
+                <br />
+                This OTP popup appears for testing purposes on mobile devices.
+              </p>
+            </div>
+
+            {/* Close Button */}
+            <button
+              onClick={() => setShowOtpPopup(false)}
+              className="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-xl transition-all shadow-lg active:scale-95"
+            >
+              Got it! Close
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Error Toast */}
       {(localError || error) && (
         <div className="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 z-50 max-w-md animate-slide-in">
@@ -616,6 +696,34 @@ const LoginSignupOTP = () => {
 
         .animate-slide-in {
           animation: slide-in 0.3s ease-out;
+        }
+
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-out;
+        }
+
+        @keyframes scale-in {
+          from {
+            transform: scale(0.9);
+            opacity: 0;
+          }
+          to {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+
+        .animate-scale-in {
+          animation: scale-in 0.3s ease-out;
         }
       `}</style>
     </div>

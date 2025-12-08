@@ -52,6 +52,11 @@ const userSchema = new mongoose.Schema({
         type: Date,
         select: false,
     },
+    useTwilioVerify: {
+        type: Boolean,
+        default: false,
+        select: false,
+    },
     isVerified: {
         type: Boolean,
         default: false,

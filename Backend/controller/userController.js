@@ -4,7 +4,7 @@ const sendToken = require("../utils/jwtToken");
 const sendEmail = require("../utils/sendEmail");
 const catchAsyncError = require("../middleware/catchAsyncError");
 const validator = require("validator");
-const sendSMS = require("../utils/sendSMS");
+const { sendSMS, sendOTPVerify, verifyOTPVerify } = require("../utils/twilioVerify");
 const { uploadSingle } = require("../utils/cloudinary");
 
 
@@ -1006,71 +1006,140 @@ function generatePatientDataPDFHelper(patient, appointments, prescriptions, res)
 exports.sendOTP = catchAsyncError(async (req, res, next) => {
     const { phone } = req.body;
     
-    console.log('📱 OTP request for phone:', phone);
+    console.log('📱 ========================================');
+    console.log('📱 OTP REQUEST RECEIVED');
+    console.log('📱 Phone:', phone);
+    console.log('📱 ========================================');
     
-    if (!phone || !/^\d{10}$/.test(phone)) {
+    // Validate phone number
+    if (!phone) {
+        console.log('❌ No phone number provided');
+        return next(new ErrorHander("Please enter your phone number", 400));
+    }
+    
+    if (!/^\d{10}$/.test(phone)) {
+        console.log('❌ Invalid phone format:', phone);
         return next(new ErrorHander("Please enter a valid 10-digit phone number", 400));
     }
     
-    // Check if user exists
-    let user = await User.findOne({ phone }).select("+otp +otpExpire");
-    let isNewUser = false;
-    
-    if (!user) {
-        console.log('📝 New user - creating temporary record');
-        isNewUser = true;
-        // For new users, create a minimal temporary record
-        user = new User({
-            phone,
-            contact: phone, // Set contact to phone to avoid null duplicate key error
-            name: `User_${phone}`, // Temporary name
-            isVerified: false
-        });
-    }
-    
-    // Generate OTP
-    const otp = user.generateOTP();
-    
     try {
-        await user.save({ validateBeforeSave: false });
-        console.log('✅ User record saved with OTP');
-    } catch (saveError) {
-        console.error('❌ Error saving user:', saveError);
-        return next(new ErrorHander(`Failed to generate OTP: ${saveError.message}`, 500));
-    }
-    
-    console.log('🔐 Generated OTP:', otp);
-    
-    // Send OTP via SMS
-    try {
-        const message = `Your Cureon OTP is: ${otp}. Valid for 10 minutes. Do not share this OTP with anyone.`;
+        // Check if user exists
+        let user = await User.findOne({ phone }).select("+otp +otpExpire");
+        let isNewUser = false;
         
-        // In development, skip SMS and just log OTP
-        if (process.env.NODE_ENV === 'development' || !process.env.TWILIO_ACCOUNT_SID) {
-            console.log('🔧 DEVELOPMENT MODE - OTP:', otp);
-            console.log('📱 Would send to:', `+91${phone}`);
-        } else {
-            await sendSMS({
-                phone: `+91${phone}`,
-                message,
+        if (!user) {
+            console.log('📝 New user detected - creating temporary record');
+            isNewUser = true;
+            
+            // For new users, create a minimal temporary record
+            user = new User({
+                phone,
+                contact: phone,
+                name: `User_${phone}`,
+                password: `temp_${Date.now()}_${Math.random()}`, // Temporary password
+                isVerified: false
             });
-            console.log('✅ OTP sent successfully via SMS');
+            
+            console.log('📝 Temporary user created');
+        } else {
+            console.log('✅ Existing user found:', user.name);
         }
+        
+        const phoneWithCountryCode = `+91${phone}`;
+        let otp = null;
+        let smsSent = false;
+        let useTwilioVerify = false;
+        
+        // Try Twilio Verify API first (recommended)
+        if (process.env.TWILIO_VERIFY_SERVICE_SID && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+            try {
+                console.log('🔐 Using Twilio Verify API (recommended)');
+                const verification = await sendOTPVerify(phoneWithCountryCode);
+                
+                if (verification.status === 'pending') {
+                    smsSent = true;
+                    useTwilioVerify = true;
+                    console.log('✅ OTP sent via Twilio Verify API');
+                    
+                    // Mark that we're using Twilio Verify
+                    user.useTwilioVerify = true;
+                    await user.save({ validateBeforeSave: false });
+                }
+            } catch (verifyError) {
+                console.error('⚠️ Twilio Verify API failed:', verifyError.message);
+                console.log('📱 Falling back to manual OTP generation');
+            }
+        }
+        
+        // Fallback to manual OTP generation
+        if (!useTwilioVerify) {
+            console.log('🔐 Using manual OTP generation');
+            
+            // Generate OTP
+            otp = user.generateOTP();
+            console.log('🔐 OTP Generated:', otp);
+            console.log('⏰ OTP Expires:', new Date(user.otpExpire).toLocaleString());
+            
+            // Mark that we're NOT using Twilio Verify
+            user.useTwilioVerify = false;
+            
+            // Save user with OTP
+            await user.save({ validateBeforeSave: false });
+            console.log('✅ User saved with OTP');
+            
+            // Try to send SMS with manual OTP
+            const message = `Your Cureon OTP is: ${otp}. Valid for 10 minutes. Do not share this OTP with anyone.`;
+            
+            if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
+                try {
+                    await sendSMS({
+                        phone: phoneWithCountryCode,
+                        message,
+                    });
+                    smsSent = true;
+                    console.log('✅ SMS sent successfully to', phoneWithCountryCode);
+                } catch (smsError) {
+                    console.error('⚠️ SMS sending failed:', smsError.message);
+                    console.log('📱 Continuing without SMS (OTP will be shown in console)');
+                }
+            } else {
+                console.log('⚠️ Twilio not configured - SMS disabled');
+            }
+            
+            // Always log OTP in development or if SMS failed
+            if (process.env.NODE_ENV === 'development' || !smsSent) {
+                console.log('');
+                console.log('╔════════════════════════════════════╗');
+                console.log('║     🔐 YOUR OTP CODE 🔐           ║');
+                console.log('║                                    ║');
+                console.log(`║          ${otp}                  ║`);
+                console.log('║                                    ║');
+                console.log('║   Valid for 10 minutes            ║');
+                console.log('╚════════════════════════════════════╝');
+                console.log('');
+            }
+        }
+        
+        console.log('✅ OTP request completed successfully');
+        console.log('📱 Method:', useTwilioVerify ? 'Twilio Verify API' : 'Manual OTP');
+        console.log('📱 ========================================\n');
         
         res.status(200).json({
             success: true,
-            message: "OTP sent successfully to your phone",
+            message: smsSent 
+                ? "OTP sent successfully to your phone" 
+                : "OTP generated successfully (check console)",
             isNewUser: isNewUser || !user.isVerified,
-            // Include OTP in development mode for testing
-            ...(process.env.NODE_ENV === 'development' && { otp })
+            useTwilioVerify: useTwilioVerify,
+            // Include OTP in response for development/testing (only for manual OTP) - EXACTLY like CureConnect
+            ...(!useTwilioVerify && process.env.NODE_ENV === 'development' && { otp }),
+            ...(!useTwilioVerify && !smsSent && { otp }) // Include OTP if SMS failed
         });
-    } catch (error) {
-        user.otp = undefined;
-        user.otpExpire = undefined;
-        await user.save({ validateBeforeSave: false });
         
-        console.error('❌ Failed to send OTP:', error);
-        return next(new ErrorHander(`Failed to send OTP: ${error.message}`, 500));
+    } catch (error) {
+        console.error('❌ OTP Generation Error:', error);
+        console.error('❌ Error Stack:', error.stack);
+        return next(new ErrorHander(`Failed to generate OTP: ${error.message}`, 500));
     }
 });
 
@@ -1078,102 +1147,173 @@ exports.sendOTP = catchAsyncError(async (req, res, next) => {
 exports.verifyOTPAndAuth = catchAsyncError(async (req, res, next) => {
     const { phone, otp, name, gender, role, speciality, avatar } = req.body;
     
-    console.log('🔍 OTP verification for phone:', phone);
+    console.log('🔍 ========================================');
+    console.log('🔍 OTP VERIFICATION REQUEST');
+    console.log('🔍 Phone:', phone);
+    console.log('🔍 OTP:', otp);
+    console.log('🔍 ========================================');
     
-    if (!phone || !otp) {
-        return next(new ErrorHander("Please provide phone number and OTP", 400));
+    // Validate inputs
+    if (!phone) {
+        console.log('❌ No phone number provided');
+        return next(new ErrorHander("Please provide phone number", 400));
     }
     
-    // Find user with OTP
-    const user = await User.findOne({ phone }).select("+otp +otpExpire");
-    
-    if (!user) {
-        return next(new ErrorHander("User not found", 404));
+    if (!otp) {
+        console.log('❌ No OTP provided');
+        return next(new ErrorHander("Please provide OTP", 400));
     }
     
-    // Verify OTP
-    const isOTPValid = user.verifyOTP(otp);
-    
-    if (!isOTPValid) {
-        return next(new ErrorHander("Invalid or expired OTP", 401));
+    if (otp.length !== 6) {
+        console.log('❌ Invalid OTP length:', otp.length);
+        return next(new ErrorHander("OTP must be 6 digits", 400));
     }
-    
-    console.log('✅ OTP verified successfully');
-    
-    // Track if this is a new registration
-    const wasNewUser = !user.isVerified;
-    
-    // If new user (not verified), update details
-    if (wasNewUser) {
-        if (!name || !gender) {
-            return next(new ErrorHander("Please provide name and gender for registration", 400));
-        }
-        
-        if (name.length < 4) {
-            return next(new ErrorHander("Name should have more than 4 characters", 400));
-        }
-        
-        // Ensure role is valid
-        const validRoles = ['user', 'doctor', 'pharmacist'];
-        const userRole = validRoles.includes(role) ? role : 'user';
-        
-        user.name = name;
-        user.gender = gender;
-        user.role = userRole;
-        user.contact = phone; // Set contact to phone for backward compatibility
-        user.isVerified = true;
-        
-        // Handle avatar for doctors
-        if (userRole === 'doctor' && avatar) {
-            try {
-                const parsedAvatar = typeof avatar === 'string' ? JSON.parse(avatar) : avatar;
-                user.avatar = {
-                    public_id: parsedAvatar.public_id || "",
-                    url: parsedAvatar.url || ""
-                };
-            } catch (error) {
-                console.error('Error parsing avatar:', error);
-            }
-        }
-        
-        // Add speciality for doctors
-        if (userRole === 'doctor') {
-            user.speciality = speciality || 'general';
-        }
-        
-        console.log('📝 Registering new user:', name);
-    } else {
-        console.log('🔐 Logging in existing user:', user.name);
-    }
-    
-    // Clear OTP
-    user.otp = undefined;
-    user.otpExpire = undefined;
     
     try {
-        await user.save({ validateBeforeSave: false });
-    } catch (saveError) {
-        console.error('❌ Error saving user after OTP verification:', saveError);
-        return next(new ErrorHander(`Failed to complete authentication: ${saveError.message}`, 500));
-    }
-    
-    // Send welcome message for new users
-    if (wasNewUser) {
-        try {
-            const message = `Welcome to Cureon ${user.name}! Your account has been created successfully.`;
-            
-            if (process.env.NODE_ENV === 'development' || !process.env.TWILIO_ACCOUNT_SID) {
-                console.log('🔧 DEVELOPMENT MODE - Would send welcome SMS to:', `+91${phone}`);
-            } else {
-                await sendSMS({
-                    phone: `+91${phone}`,
-                    message,
-                });
-            }
-        } catch (error) {
-            console.error('⚠️ Failed to send welcome message:', error);
+        // Find user
+        const user = await User.findOne({ phone }).select("+otp +otpExpire +password");
+        
+        if (!user) {
+            console.log('❌ User not found for phone:', phone);
+            return next(new ErrorHander("User not found. Please request OTP again.", 404));
         }
+        
+        console.log('✅ User found:', user.name);
+        
+        const phoneWithCountryCode = `+91${phone}`;
+        let isOTPValid = false;
+        
+        // Check if using Twilio Verify API
+        if (user.useTwilioVerify && process.env.TWILIO_VERIFY_SERVICE_SID) {
+            console.log('🔍 Verifying OTP via Twilio Verify API');
+            
+            try {
+                const verificationCheck = await verifyOTPVerify(phoneWithCountryCode, otp);
+                
+                if (verificationCheck.status === 'approved' && verificationCheck.valid) {
+                    isOTPValid = true;
+                    console.log('✅ OTP verified successfully via Twilio Verify API');
+                } else {
+                    console.log('❌ Twilio Verify API returned:', verificationCheck.status);
+                }
+            } catch (verifyError) {
+                console.error('❌ Twilio Verify API error:', verifyError.message);
+                return next(new ErrorHander("Invalid or expired OTP. Please try again.", 401));
+            }
+        } else {
+            // Manual OTP verification
+            console.log('🔍 Verifying OTP manually');
+            console.log('🔍 OTP Expire Time:', user.otpExpire ? new Date(user.otpExpire).toLocaleString() : 'Not set');
+            console.log('🔍 Current Time:', new Date().toLocaleString());
+            
+            isOTPValid = user.verifyOTP(otp);
+            
+            if (!isOTPValid) {
+                console.log('❌ OTP verification failed');
+                if (user.otpExpire && user.otpExpire < Date.now()) {
+                    console.log('❌ OTP has expired');
+                    return next(new ErrorHander("OTP has expired. Please request a new one.", 401));
+                }
+                console.log('❌ OTP does not match');
+                return next(new ErrorHander("Invalid OTP. Please check and try again.", 401));
+            }
+            
+            console.log('✅ OTP verified successfully (manual)');
+        }
+        
+        if (!isOTPValid) {
+            return next(new ErrorHander("Invalid OTP. Please try again.", 401));
+        }
+        
+        // Track if this is a new registration
+        const wasNewUser = !user.isVerified;
+        
+        // If new user (not verified), update details
+        if (wasNewUser) {
+            console.log('📝 Processing new user registration');
+            
+            if (!name || !gender) {
+                console.log('❌ Missing registration details');
+                return next(new ErrorHander("Please provide name and gender for registration", 400));
+            }
+            
+            if (name.length < 4) {
+                console.log('❌ Name too short:', name.length);
+                return next(new ErrorHander("Name should have more than 4 characters", 400));
+            }
+            
+            // Ensure role is valid
+            const validRoles = ['user', 'doctor', 'pharmacist'];
+            const userRole = validRoles.includes(role) ? role : 'user';
+            
+            user.name = name;
+            user.gender = gender;
+            user.role = userRole;
+            user.contact = phone;
+            user.isVerified = true;
+            
+            // Handle avatar for doctors
+            if (userRole === 'doctor' && avatar) {
+                try {
+                    const parsedAvatar = typeof avatar === 'string' ? JSON.parse(avatar) : avatar;
+                    user.avatar = {
+                        public_id: parsedAvatar.public_id || "",
+                        url: parsedAvatar.url || ""
+                    };
+                    console.log('✅ Avatar set for doctor');
+                } catch (error) {
+                    console.error('⚠️ Error parsing avatar:', error);
+                }
+            }
+            
+            // Add speciality for doctors
+            if (userRole === 'doctor') {
+                user.speciality = speciality || 'General Physician';
+                console.log('✅ Speciality set:', user.speciality);
+            }
+            
+            console.log('📝 New user details:', { name, gender, role: userRole });
+        } else {
+            console.log('🔐 Logging in existing user:', user.name);
+        }
+        
+        // Clear OTP and Twilio Verify flag
+        user.otp = undefined;
+        user.otpExpire = undefined;
+        user.useTwilioVerify = undefined;
+        
+        // Save user
+        await user.save({ validateBeforeSave: false });
+        console.log('✅ User saved successfully');
+        
+        // Send welcome message for new users
+        if (wasNewUser) {
+            try {
+                const message = `Welcome to Cureon ${user.name}! Your account has been created successfully.`;
+                
+                if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
+                    await sendSMS({
+                        phone: phoneWithCountryCode,
+                        message,
+                    });
+                    console.log('✅ Welcome SMS sent');
+                } else {
+                    console.log('⚠️ Twilio not configured - Welcome SMS skipped');
+                }
+            } catch (error) {
+                console.error('⚠️ Failed to send welcome message:', error.message);
+            }
+        }
+        
+        console.log('✅ Authentication completed successfully');
+        console.log('🔍 ========================================\n');
+        
+        // Send token
+        sendToken(user, wasNewUser ? 201 : 200, res);
+        
+    } catch (error) {
+        console.error('❌ OTP Verification Error:', error);
+        console.error('❌ Error Stack:', error.stack);
+        return next(new ErrorHander(`Failed to verify OTP: ${error.message}`, 500));
     }
-    
-    sendToken(user, wasNewUser ? 201 : 200, res);
 });

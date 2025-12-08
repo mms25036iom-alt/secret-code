@@ -16,6 +16,9 @@ const PharmacistDashboard = () => {
     const [showAddMedicineModal, setShowAddMedicineModal] = useState(false);
     const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
     const [selectedMedicine, setSelectedMedicine] = useState(null);
+    const [csvFile, setCsvFile] = useState(null);
+    const [csvData, setCsvData] = useState([]);
+    const [uploadProgress, setUploadProgress] = useState(0);
     
     // Search and filter states
     const [searchTerm, setSearchTerm] = useState('');
@@ -168,6 +171,120 @@ const PharmacistDashboard = () => {
     } catch {
             toast.error('Search failed');
         }
+    };
+
+    const handleCsvFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+                toast.error('Please upload a valid CSV file');
+                return;
+            }
+            setCsvFile(file);
+            parseCsvFile(file);
+        }
+    };
+
+    const parseCsvFile = (file) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target.result;
+            const lines = text.split('\n').filter(line => line.trim());
+            
+            if (lines.length < 2) {
+                toast.error('CSV file is empty or invalid');
+                return;
+            }
+
+            const headers = lines[0].split(',').map(h => h.trim());
+            const data = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => v.trim());
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header] = values[index] || '';
+                });
+                data.push(row);
+            }
+
+            setCsvData(data);
+            toast.success(`Parsed ${data.length} medicines from CSV`);
+        };
+        reader.onerror = () => {
+            toast.error('Failed to read CSV file');
+        };
+        reader.readAsText(file);
+    };
+
+    const handleBulkUpload = async () => {
+        if (!csvData || csvData.length === 0) {
+            toast.error('No data to upload. Please select a CSV file first.');
+            return;
+        }
+
+        try {
+            setUploadProgress(10);
+            
+            // Transform CSV data to match backend schema
+            const medicines = csvData.map(row => ({
+                name: row.name || row.Name,
+                genericName: row.genericName || row.GenericName || '',
+                category: row.category || row.Category,
+                manufacturer: row.manufacturer || row.Manufacturer,
+                composition: row.composition || row.Composition,
+                strength: row.strength || row.Strength,
+                formType: row.formType || row.FormType,
+                packSize: row.packSize || row.PackSize,
+                price: parseFloat(row.price || row.Price),
+                mrp: parseFloat(row.mrp || row.MRP),
+                discount: parseFloat(row.discount || row.Discount || 0),
+                stock: parseInt(row.stock || row.Stock),
+                minStock: parseInt(row.minStock || row.MinStock || 10),
+                expiryDate: row.expiryDate || row.ExpiryDate,
+                batchNumber: row.batchNumber || row.BatchNumber,
+                description: row.description || row.Description || '',
+                uses: row.uses || row.Uses || '',
+                sideEffects: row.sideEffects || row.SideEffects || '',
+                precautions: row.precautions || row.Precautions || '',
+                dosage: row.dosage || row.Dosage || '',
+                prescriptionRequired: (row.prescriptionRequired || row.PrescriptionRequired || 'false').toLowerCase() === 'true'
+            }));
+
+            setUploadProgress(30);
+
+            const response = await axios.post('/pharmacy/medicines/bulk-upload', { medicines });
+
+            setUploadProgress(100);
+            toast.success(response.data.message || 'Medicines uploaded successfully');
+            
+            setShowBulkUploadModal(false);
+            setCsvFile(null);
+            setCsvData([]);
+            setUploadProgress(0);
+            
+            loadPharmacyData();
+        } catch (error) {
+            setUploadProgress(0);
+            toast.error(error.response?.data?.message || 'Failed to upload medicines');
+        }
+    };
+
+    const downloadSampleCsv = () => {
+        const sampleData = `name,genericName,category,manufacturer,composition,strength,formType,packSize,price,mrp,discount,stock,minStock,expiryDate,batchNumber,description,uses,sideEffects,precautions,dosage,prescriptionRequired
+Paracetamol 500mg,Paracetamol,Pain Relief,ABC Pharma,Paracetamol 500mg,500mg,Tablet,Strip of 10 tablets,50,60,10,100,10,2025-12-31,BATCH001,Pain reliever and fever reducer,For headache and fever,Nausea and allergic reactions,Consult doctor if pregnant,1-2 tablets every 4-6 hours,false
+Amoxicillin 250mg,Amoxicillin,Antibiotics,XYZ Labs,Amoxicillin 250mg,250mg,Capsule,Strip of 10 capsules,120,150,20,50,10,2026-06-30,BATCH002,Antibiotic for bacterial infections,Treats various bacterial infections,Diarrhea and rash,Complete full course,1 capsule 3 times daily,true`;
+
+        const blob = new Blob([sampleData], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'medicine_upload_sample.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        toast.success('Sample CSV downloaded');
     };
 
     const formatDate = (date) => {
@@ -583,6 +700,153 @@ const PharmacistDashboard = () => {
                 )}
             </div>
 
+            {/* Bulk Upload Modal */}
+            {showBulkUploadModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6 border-b border-gray-200">
+                            <div className="flex justify-between items-center">
+                                <h2 className="text-xl font-semibold text-gray-900">Bulk Upload Medicines</h2>
+                                <button
+                                    onClick={() => {
+                                        setShowBulkUploadModal(false);
+                                        setCsvFile(null);
+                                        setCsvData([]);
+                                        setUploadProgress(0);
+                                    }}
+                                    className="text-gray-400 hover:text-gray-600"
+                                >
+                                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                                            d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                            {/* Instructions */}
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <h3 className="font-medium text-blue-900 mb-2">Instructions</h3>
+                                <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                                    <li>Download the sample CSV file to see the required format</li>
+                                    <li>Fill in your medicine data following the same column structure</li>
+                                    <li>Required fields: name, category, manufacturer, composition, strength, formType, packSize, price, mrp, stock, expiryDate, batchNumber</li>
+                                    <li>Date format: YYYY-MM-DD (e.g., 2025-12-31)</li>
+                                    <li>Boolean fields (prescriptionRequired): use true or false</li>
+                                </ul>
+                            </div>
+
+                            {/* Download Sample */}
+                            <div>
+                                <button
+                                    onClick={downloadSampleCsv}
+                                    className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 font-medium"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <span>Download Sample CSV Template</span>
+                                </button>
+                            </div>
+
+                            {/* File Upload */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Upload CSV File
+                                </label>
+                                <input
+                                    type="file"
+                                    accept=".csv"
+                                    onChange={handleCsvFileChange}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                                {csvFile && (
+                                    <p className="text-sm text-green-600 mt-2">
+                                        Selected: {csvFile.name}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Preview Data */}
+                            {csvData.length > 0 && (
+                                <div>
+                                    <h3 className="font-medium text-gray-900 mb-2">
+                                        Preview ({csvData.length} medicines)
+                                    </h3>
+                                    <div className="border border-gray-200 rounded-lg overflow-x-auto max-h-60">
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-50">
+                                                <tr>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Name</th>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Category</th>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Price</th>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Stock</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {csvData.slice(0, 5).map((row, index) => (
+                                                    <tr key={index}>
+                                                        <td className="px-4 py-2 text-sm text-gray-900">{row.name || row.Name}</td>
+                                                        <td className="px-4 py-2 text-sm text-gray-600">{row.category || row.Category}</td>
+                                                        <td className="px-4 py-2 text-sm text-gray-600">₹{row.price || row.Price}</td>
+                                                        <td className="px-4 py-2 text-sm text-gray-600">{row.stock || row.Stock}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {csvData.length > 5 && (
+                                            <div className="px-4 py-2 bg-gray-50 text-sm text-gray-600 text-center">
+                                                ... and {csvData.length - 5} more
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Upload Progress */}
+                            {uploadProgress > 0 && uploadProgress < 100 && (
+                                <div>
+                                    <div className="flex justify-between text-sm text-gray-600 mb-1">
+                                        <span>Uploading...</span>
+                                        <span>{uploadProgress}%</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div 
+                                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                            style={{ width: `${uploadProgress}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex justify-end space-x-3 px-6 py-4 border-t border-gray-200">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowBulkUploadModal(false);
+                                    setCsvFile(null);
+                                    setCsvData([]);
+                                    setUploadProgress(0);
+                                }}
+                                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleBulkUpload}
+                                disabled={!csvData || csvData.length === 0 || uploadProgress > 0}
+                                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium"
+                            >
+                                Upload {csvData.length > 0 ? `${csvData.length} Medicines` : ''}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Add Medicine Modal */}
             {showAddMedicineModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -662,6 +926,65 @@ const PharmacistDashboard = () => {
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                         />
                                     </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Composition *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={newMedicine.composition}
+                                            onChange={(e) => setNewMedicine({...newMedicine, composition: e.target.value})}
+                                            required
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="e.g., Paracetamol 500mg"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Strength *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={newMedicine.strength}
+                                            onChange={(e) => setNewMedicine({...newMedicine, strength: e.target.value})}
+                                            required
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="e.g., 500mg"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Form Type *
+                                        </label>
+                                        <select
+                                            value={newMedicine.formType}
+                                            onChange={(e) => setNewMedicine({...newMedicine, formType: e.target.value})}
+                                            required
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        >
+                                            <option value="">Select Form Type</option>
+                                            {formTypes.map(type => (
+                                                <option key={type} value={type}>{type}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Pack Size *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={newMedicine.packSize}
+                                            onChange={(e) => setNewMedicine({...newMedicine, packSize: e.target.value})}
+                                            required
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="e.g., Strip of 10 tablets"
+                                        />
+                                    </div>
                                 </div>
 
                                 {/* Pricing and Stock */}
@@ -739,6 +1062,20 @@ const PharmacistDashboard = () => {
                                             onChange={(e) => setNewMedicine({...newMedicine, expiryDate: e.target.value})}
                                             required
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Batch Number *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={newMedicine.batchNumber}
+                                            onChange={(e) => setNewMedicine({...newMedicine, batchNumber: e.target.value})}
+                                            required
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="e.g., BATCH001"
                                         />
                                     </div>
                                 </div>

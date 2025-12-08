@@ -1,0 +1,57 @@
+{
+  "appId": "com.cureon.telemed",
+  "appName": "cureon",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "hostname": "cureon.app",
+    "allowNavigation": [
+      "*.cureon.app",
+      "localhost",
+      "*.onrender.com",
+      "*.stripe.com",
+      "*.zegocloud.com",
+      "*.google.com",
+      "translate.google.com",
+      "*.cloudinary.com"
+    ]
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#ffffff",
+      "showSpinner": true,
+      "androidSpinnerStyle": "large",
+      "spinnerColor": "#4F46E5"
+    },
+    "Camera": {
+      "permissions": [
+        "camera",
+        "photos"
+      ]
+    },
+    "Geolocation": {
+      "permissions": [
+        "location"
+      ]
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon_config_sample",
+      "iconColor": "#4F46E5"
+    },
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    }
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true,
+    "minWebViewVersion": 60
+  }
+}
