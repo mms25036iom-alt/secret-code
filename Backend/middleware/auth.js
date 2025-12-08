@@ -6,7 +6,19 @@ const User = require('../models/userModel');
 exports.isAuthenticatedUser = catchAsyncError(async (req, res, next) => {
     console.log('🔐 Auth Check - Headers:', req.headers);
     console.log('🍪 Cookies:', req.cookies);
-    const { token } = req.cookies;
+    
+    // Try to get token from cookies first, then from Authorization header
+    let token = req.cookies.token;
+    
+    // If no token in cookies, check Authorization header
+    if (!token && req.headers.authorization) {
+        const authHeader = req.headers.authorization;
+        if (authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring(7); // Remove 'Bearer ' prefix
+            console.log('🔑 Token found in Authorization header');
+        }
+    }
+    
     console.log('🔑 Token exists:', !!token);
     console.log('🔑 JWT_SECRET exists:', !!process.env.JWT_SECRET);
     console.log('🌐 Origin:', req.get('origin'));
@@ -14,7 +26,7 @@ exports.isAuthenticatedUser = catchAsyncError(async (req, res, next) => {
     console.log('📍 Request Method:', req.method);
     
     if (!token) {
-        console.log('❌ No token found in cookies');
+        console.log('❌ No token found in cookies or Authorization header');
         return next(new ErrorHander("Please login to access this feature", 401));
     }
 

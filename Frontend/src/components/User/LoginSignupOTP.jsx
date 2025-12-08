@@ -125,9 +125,28 @@ const LoginSignupOTP = () => {
       }
     } catch (error) {
       console.error("❌ OTP send failed:", error);
-      setLocalError(
-        error.response?.data?.message || "Failed to send OTP. Please try again."
-      );
+      
+      // Detailed error message for debugging
+      let errorMessage = "Failed to send OTP. Please try again.";
+      
+      if (error.response) {
+        // Server responded with error
+        errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
+      } else if (error.request) {
+        // Request made but no response
+        errorMessage = "Cannot connect to server. Please check your internet connection.";
+        console.error("❌ No response from server. Check if backend is running.");
+      } else {
+        // Something else happened
+        errorMessage = error.message || "An unexpected error occurred.";
+      }
+      
+      setLocalError(errorMessage);
+      
+      // Show alert on mobile for better visibility
+      if (window.Capacitor?.isNativePlatform()) {
+        alert(`❌ Error: ${errorMessage}`);
+      }
     } finally {
       setLocalLoading(false);
     }
@@ -155,9 +174,24 @@ const LoginSignupOTP = () => {
         );
 
         console.log("✅ Login successful:", data);
+        console.log("🔑 Token from response:", data.token);
+        console.log("👤 User from response:", data.user);
         
-        // Store token in localStorage as backup
-        localStorage.setItem("token", data.token);
+        // Store token and user data in localStorage
+        if (data.token) {
+          localStorage.setItem("token", data.token);
+          console.log("✅ Token saved to localStorage");
+        } else {
+          console.error("❌ No token in response!");
+        }
+        
+        if (data.user) {
+          localStorage.setItem("user", JSON.stringify(data.user));
+          console.log("✅ User saved to localStorage");
+        }
+        
+        // Small delay to ensure token is set before loading user
+        await new Promise(resolve => setTimeout(resolve, 100));
         
         // Load user data into Redux
         dispatch(loadUser());

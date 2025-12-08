@@ -4,17 +4,10 @@
   "webDir": "dist",
   "bundledWebRuntime": false,
   "server": {
-    "androidScheme": "https",
-    "hostname": "cureon.app",
+    "androidScheme": "http",
+    "cleartext": true,
     "allowNavigation": [
-      "*.cureon.app",
-      "localhost",
-      "*.onrender.com",
-      "*.stripe.com",
-      "*.zegocloud.com",
-      "*.google.com",
-      "translate.google.com",
-      "*.cloudinary.com"
+      "*"
     ]
   },
   "plugins": {

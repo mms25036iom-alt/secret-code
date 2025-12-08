@@ -18,25 +18,56 @@ const isNativePlatform = () => {
   return false;
 };
 
-// Your production backend URL - UPDATE THIS WITH YOUR ACTUAL BACKEND URL
-const PRODUCTION_API_URL = 'https://your-backend.onrender.com';
+// ============================================
+// IMPORTANT: UPDATE THESE URLs BEFORE BUILDING APK
+// ============================================
+
+// Your production backend URL - UPDATE THIS!
+// Example: 'https://your-backend.onrender.com' or 'https://api.yourapp.com'
+const PRODUCTION_API_URL = import.meta.env.VITE_API_URL || 'http://192.168.0.101:4000';
 
 // Local development URL
 const LOCAL_API_URL = 'http://localhost:4000';
 
+// For mobile testing on real device, use your computer's local IP
+// Find your IP: Windows (ipconfig) | Mac/Linux (ifconfig)
+// IMPORTANT: Update this with YOUR computer's IP address
+const LOCAL_IP = '192.168.0.101'; // UPDATE THIS WITH YOUR LOCAL IP
+const MOBILE_DEV_API_URL = `http://${LOCAL_IP}:4000`;
+
+// ============================================
+// MOBILE APK CONFIGURATION
+// ============================================
+// For APK testing, the app will use:
+// - Development build: MOBILE_DEV_API_URL (your local IP)
+// - Production build: PRODUCTION_API_URL (your production server)
+// ============================================
+
 // Determine which API URL to use
-// Mobile apps always use production URL
-// Web apps use local URL in development, production URL in production
 export const API_BASE_URL = (() => {
-  if (isNativePlatform()) {
-    return PRODUCTION_API_URL;
+  // Priority 1: Environment variable (if set)
+  if (import.meta.env.VITE_API_URL) {
+    console.log('📡 Using API URL from environment variable:', import.meta.env.VITE_API_URL);
+    return import.meta.env.VITE_API_URL;
   }
   
-  // For web, check if we're in development or production
+  // Priority 2: Mobile apps (Capacitor) - ALWAYS use local IP for testing
+  if (isNativePlatform()) {
+    // For mobile APK, always use local IP for testing
+    // Change this to PRODUCTION_API_URL when deploying to production
+    const mobileUrl = MOBILE_DEV_API_URL;
+    console.log('📱 Mobile app detected, using:', mobileUrl);
+    console.log('📱 Make sure your phone is on the same WiFi network!');
+    return mobileUrl;
+  }
+  
+  // Priority 3: Web apps
   if (import.meta.env.DEV) {
+    console.log('🌐 Web development mode, using:', LOCAL_API_URL);
     return LOCAL_API_URL;
   }
   
+  console.log('🌐 Web production mode, using:', PRODUCTION_API_URL);
   return PRODUCTION_API_URL;
 })();
 

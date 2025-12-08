@@ -176,44 +176,103 @@ const PharmacistDashboard = () => {
     const handleCsvFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
-                toast.error('Please upload a valid CSV file');
+            // Mobile devices might not set correct MIME type, so check extension only
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                toast.error('Please upload a valid CSV file (.csv extension required)');
                 return;
             }
+            
+            console.log('📄 CSV File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
             setCsvFile(file);
             parseCsvFile(file);
         }
     };
 
     const parseCsvFile = (file) => {
+        console.log('📖 Starting to parse CSV file...');
+        
         const reader = new FileReader();
+        
         reader.onload = (e) => {
-            const text = e.target.result;
-            const lines = text.split('\n').filter(line => line.trim());
-            
-            if (lines.length < 2) {
-                toast.error('CSV file is empty or invalid');
-                return;
+            try {
+                console.log('✅ File loaded successfully');
+                const text = e.target.result;
+                console.log('📝 File content length:', text.length);
+                
+                // Handle different line endings (Windows: \r\n, Unix: \n, Mac: \r)
+                const lines = text.split(/\r\n|\n|\r/).filter(line => line.trim());
+                console.log('📊 Total lines:', lines.length);
+                
+                if (lines.length < 2) {
+                    toast.error('CSV file is empty or invalid. Need at least header and one data row.');
+                    return;
+                }
+
+                // Parse CSV properly handling quoted values
+                const parseCsvLine = (line) => {
+                    const result = [];
+                    let current = '';
+                    let inQuotes = false;
+                    
+                    for (let i = 0; i < line.length; i++) {
+                        const char = line[i];
+                        
+                        if (char === '"') {
+                            inQuotes = !inQuotes;
+                        } else if (char === ',' && !inQuotes) {
+                            result.push(current.trim());
+                            current = '';
+                        } else {
+                            current += char;
+                        }
+                    }
+                    result.push(current.trim());
+                    return result;
+                };
+
+                const headers = parseCsvLine(lines[0]);
+                console.log('📋 Headers:', headers);
+                
+                const data = [];
+
+                for (let i = 1; i < lines.length; i++) {
+                    const values = parseCsvLine(lines[i]);
+                    const row = {};
+                    
+                    headers.forEach((header, index) => {
+                        row[header] = values[index] || '';
+                    });
+                    
+                    // Only add rows that have at least a name
+                    if (row.name || row.Name) {
+                        data.push(row);
+                    }
+                }
+
+                console.log('✅ Parsed data:', data.length, 'medicines');
+                console.log('📦 Sample row:', data[0]);
+                
+                setCsvData(data);
+                toast.success(`✅ Parsed ${data.length} medicines from CSV`);
+            } catch (error) {
+                console.error('❌ Error parsing CSV:', error);
+                toast.error(`Failed to parse CSV: ${error.message}`);
             }
-
-            const headers = lines[0].split(',').map(h => h.trim());
-            const data = [];
-
-            for (let i = 1; i < lines.length; i++) {
-                const values = lines[i].split(',').map(v => v.trim());
-                const row = {};
-                headers.forEach((header, index) => {
-                    row[header] = values[index] || '';
-                });
-                data.push(row);
+        };
+        
+        reader.onerror = (error) => {
+            console.error('❌ FileReader error:', error);
+            toast.error('Failed to read CSV file. Please try again.');
+        };
+        
+        reader.onprogress = (e) => {
+            if (e.lengthComputable) {
+                const percentLoaded = Math.round((e.loaded / e.total) * 100);
+                console.log(`📥 Loading: ${percentLoaded}%`);
             }
-
-            setCsvData(data);
-            toast.success(`Parsed ${data.length} medicines from CSV`);
         };
-        reader.onerror = () => {
-            toast.error('Failed to read CSV file');
-        };
+        
+        console.log('📂 Reading file as text...');
         reader.readAsText(file);
     };
 
@@ -270,21 +329,110 @@ const PharmacistDashboard = () => {
         }
     };
 
-    const downloadSampleCsv = () => {
-        const sampleData = `name,genericName,category,manufacturer,composition,strength,formType,packSize,price,mrp,discount,stock,minStock,expiryDate,batchNumber,description,uses,sideEffects,precautions,dosage,prescriptionRequired
+    const downloadSampleCsv = async () => {
+        try {
+            console.log('📥 Starting CSV download...');
+            
+            const sampleData = `name,genericName,category,manufacturer,composition,strength,formType,packSize,price,mrp,discount,stock,minStock,expiryDate,batchNumber,description,uses,sideEffects,precautions,dosage,prescriptionRequired
 Paracetamol 500mg,Paracetamol,Pain Relief,ABC Pharma,Paracetamol 500mg,500mg,Tablet,Strip of 10 tablets,50,60,10,100,10,2025-12-31,BATCH001,Pain reliever and fever reducer,For headache and fever,Nausea and allergic reactions,Consult doctor if pregnant,1-2 tablets every 4-6 hours,false
-Amoxicillin 250mg,Amoxicillin,Antibiotics,XYZ Labs,Amoxicillin 250mg,250mg,Capsule,Strip of 10 capsules,120,150,20,50,10,2026-06-30,BATCH002,Antibiotic for bacterial infections,Treats various bacterial infections,Diarrhea and rash,Complete full course,1 capsule 3 times daily,true`;
+Amoxicillin 250mg,Amoxicillin,Antibiotics,XYZ Labs,Amoxicillin 250mg,250mg,Capsule,Strip of 10 capsules,120,150,20,50,10,2026-06-30,BATCH002,Antibiotic for bacterial infections,Treats various bacterial infections,Diarrhea and rash,Complete full course,1 capsule 3 times daily,true
+Cetirizine 10mg,Cetirizine,Cold & Flu,DEF Pharma,Cetirizine 10mg,10mg,Tablet,Strip of 10 tablets,30,40,25,200,20,2026-03-15,BATCH003,Antihistamine for allergies,For allergic rhinitis and urticaria,Drowsiness and dry mouth,Avoid alcohol,1 tablet once daily,false
+Ibuprofen 400mg,Ibuprofen,Pain Relief,GHI Pharma,Ibuprofen 400mg,400mg,Tablet,Strip of 10 tablets,80,100,20,150,15,2025-09-20,BATCH004,Anti-inflammatory pain reliever,For pain and inflammation,Stomach upset and nausea,Take with food,1 tablet every 6-8 hours,false`;
 
-        const blob = new Blob([sampleData], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'medicine_upload_sample.csv';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        toast.success('Sample CSV downloaded');
+            console.log('📄 Sample data length:', sampleData.length);
+            
+            // Check if we're on mobile (Capacitor)
+            const isMobile = window.Capacitor?.isNativePlatform();
+            console.log('📱 Is mobile:', isMobile);
+            
+            if (isMobile) {
+                // Use Capacitor Filesystem for mobile
+                console.log('📱 Using Capacitor Filesystem for mobile download');
+                
+                try {
+                    const { Filesystem, Directory } = await import('@capacitor/filesystem');
+                    
+                    // Write file to Downloads directory
+                    const result = await Filesystem.writeFile({
+                        path: 'medicine_upload_sample.csv',
+                        data: sampleData,
+                        directory: Directory.Documents, // Use Documents as Downloads might not be accessible
+                        encoding: 'utf8'
+                    });
+                    
+                    console.log('✅ File written to:', result.uri);
+                    
+                    // Show success message with file location
+                    toast.success('✅ CSV saved to Documents folder!');
+                    
+                    // Try to share the file so user can save it
+                    try {
+                        const { Share } = await import('@capacitor/share');
+                        await Share.share({
+                            title: 'Medicine Upload Sample CSV',
+                            text: 'Sample CSV file for bulk medicine upload',
+                            url: result.uri,
+                            dialogTitle: 'Save CSV File'
+                        });
+                    } catch (shareError) {
+                        console.log('Share not available:', shareError);
+                        alert(`✅ File saved successfully!\n\nLocation: Documents/medicine_upload_sample.csv\n\nYou can find it in your file manager under Documents folder.`);
+                    }
+                    
+                    return;
+                } catch (fsError) {
+                    console.error('❌ Filesystem error:', fsError);
+                    console.log('Falling back to browser download...');
+                }
+            }
+            
+            // Browser download method (for web)
+            console.log('🌐 Using browser download method');
+            const BOM = '\uFEFF';
+            const blob = new Blob([BOM + sampleData], { type: 'text/csv;charset=utf-8;' });
+            console.log('📦 Blob created, size:', blob.size);
+            
+            const url = window.URL.createObjectURL(blob);
+            console.log('🔗 Blob URL created');
+            
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'medicine_upload_sample.csv';
+            a.setAttribute('download', 'medicine_upload_sample.csv');
+            
+            document.body.appendChild(a);
+            a.click();
+            
+            setTimeout(() => {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                console.log('🧹 Cleanup completed');
+            }, 100);
+            
+            toast.success('✅ Sample CSV downloaded! Check your Downloads folder.');
+            console.log('✅ Download completed successfully');
+            
+        } catch (error) {
+            console.error('❌ Download error:', error);
+            toast.error('Failed to download CSV. Showing sample data...');
+            
+            // Fallback: Show data in copyable format
+            const sampleText = `name,genericName,category,manufacturer,composition,strength,formType,packSize,price,mrp,discount,stock,minStock,expiryDate,batchNumber,description,uses,sideEffects,precautions,dosage,prescriptionRequired
+Paracetamol 500mg,Paracetamol,Pain Relief,ABC Pharma,Paracetamol 500mg,500mg,Tablet,Strip of 10 tablets,50,60,10,100,10,2025-12-31,BATCH001,Pain reliever,For headache,Nausea,Consult doctor,1-2 tablets,false
+Amoxicillin 250mg,Amoxicillin,Antibiotics,XYZ Labs,Amoxicillin 250mg,250mg,Capsule,Strip of 10 capsules,120,150,20,50,10,2026-06-30,BATCH002,Antibiotic,For infections,Diarrhea,Complete course,1 capsule 3x daily,true`;
+            
+            // Try to copy to clipboard
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(sampleText).then(() => {
+                    alert('✅ Sample CSV data copied to clipboard!\n\nYou can paste it into a text editor and save as .csv file.');
+                }).catch(() => {
+                    alert(`📋 Copy this sample data and save as .csv:\n\n${sampleText.substring(0, 200)}...`);
+                });
+            } else {
+                alert(`📋 Copy this sample data and save as .csv:\n\n${sampleText.substring(0, 200)}...`);
+            }
+        }
     };
 
     const formatDate = (date) => {
@@ -738,7 +886,7 @@ Amoxicillin 250mg,Amoxicillin,Antibiotics,XYZ Labs,Amoxicillin 250mg,250mg,Capsu
                             </div>
 
                             {/* Download Sample */}
-                            <div>
+                            <div className="space-y-2">
                                 <button
                                     onClick={downloadSampleCsv}
                                     className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 font-medium"
@@ -749,6 +897,9 @@ Amoxicillin 250mg,Amoxicillin,Antibiotics,XYZ Labs,Amoxicillin 250mg,250mg,Capsu
                                     </svg>
                                     <span>Download Sample CSV Template</span>
                                 </button>
+                                <p className="text-xs text-gray-500">
+                                    💡 File will be saved to your Downloads folder
+                                </p>
                             </div>
 
                             {/* File Upload */}
@@ -756,17 +907,28 @@ Amoxicillin 250mg,Amoxicillin,Antibiotics,XYZ Labs,Amoxicillin 250mg,250mg,Capsu
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Upload CSV File
                                 </label>
-                                <input
-                                    type="file"
-                                    accept=".csv"
-                                    onChange={handleCsvFileChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                />
+                                <div className="relative">
+                                    <input
+                                        type="file"
+                                        accept=".csv,text/csv,application/csv"
+                                        onChange={handleCsvFileChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                        id="csv-file-input"
+                                    />
+                                </div>
                                 {csvFile && (
-                                    <p className="text-sm text-green-600 mt-2">
-                                        Selected: {csvFile.name}
-                                    </p>
+                                    <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                        <p className="text-sm text-green-800 font-medium">
+                                            ✅ Selected: {csvFile.name}
+                                        </p>
+                                        <p className="text-xs text-green-600 mt-1">
+                                            Size: {(csvFile.size / 1024).toFixed(2)} KB
+                                        </p>
+                                    </div>
                                 )}
+                                <p className="text-xs text-gray-500 mt-2">
+                                    💡 Tip: On mobile, you can select CSV files from your file manager or downloads folder
+                                </p>
                             </div>
 
                             {/* Preview Data */}
