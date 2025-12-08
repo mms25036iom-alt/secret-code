@@ -177,9 +177,9 @@ const MedicineCatalog = () => {
                     {/* Price and Rating Row */}
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center space-x-1">
-                            <span className="text-lg font-bold text-gray-900">${medicine.price}</span>
+                            <span className="text-lg font-bold text-gray-900">₹{medicine.price}</span>
                             {medicine.mrp > medicine.price && (
-                                <span className="text-xs text-gray-500 line-through">${medicine.mrp}</span>
+                                <span className="text-xs text-gray-500 line-through">₹{medicine.mrp}</span>
                             )}
                         </div>
                         <div className="flex items-center">

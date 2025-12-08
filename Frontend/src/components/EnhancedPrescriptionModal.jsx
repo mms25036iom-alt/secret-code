@@ -508,9 +508,9 @@ const EnhancedPrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
-      <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[95vh] overflow-y-auto my-2 sm:my-8">
-        <div className="p-4 sm:p-6 md:p-8">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+      <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl shadow-2xl max-w-5xl w-full my-2 sm:my-8">
+        <div className="p-4 sm:p-6 md:p-8 max-h-[90vh] overflow-y-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-blue-200">
             <div className="flex items-center space-x-2 sm:space-x-3">
@@ -668,7 +668,7 @@ const EnhancedPrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, 
             </div>
 
             {/* Medications */}
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100 pb-6">
               <div className="flex items-center justify-between mb-4">
                 <label className="block text-sm font-semibold text-gray-700">
                   Medications <span className="text-red-500">*</span>
@@ -683,7 +683,7 @@ const EnhancedPrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, 
                 </button>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-4 mb-4">
                 {formData.medications.map((medication, index) => (
                   <div key={index} className="border-2 border-blue-100 rounded-xl p-4 bg-gradient-to-br from-gray-50 to-white">
                     <div className="flex items-center justify-between mb-4">
@@ -828,7 +828,7 @@ const EnhancedPrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, 
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 sm:space-x-4 pt-4 sm:pt-6 border-t-2 border-blue-200">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 sm:space-x-4 pt-4 sm:pt-6 pb-4 border-t-2 border-blue-200 sticky bottom-0 bg-gradient-to-br from-blue-50 to-white z-10">
               <button
                 type="button"
                 onClick={onClose}

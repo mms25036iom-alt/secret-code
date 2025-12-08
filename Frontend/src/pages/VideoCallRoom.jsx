@@ -330,7 +330,7 @@ const VideoCallRoom = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col overflow-hidden">
+    <div className="h-screen bg-gray-900 flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
       {/* Header - Mobile Optimized */}
       <div className="bg-gray-800 px-3 py-2 sm:px-6 sm:py-4 flex items-center justify-between flex-shrink-0">
         <div className="min-w-0 flex-1">
@@ -343,7 +343,7 @@ const VideoCallRoom = () => {
       </div>
 
       {/* Video Grid - Mobile First Layout */}
-      <div className="flex-1 p-2 sm:p-4 flex flex-col lg:flex-row gap-2 sm:gap-4 min-h-0">
+      <div className="flex-1 p-2 sm:p-4 flex flex-col lg:flex-row gap-2 sm:gap-4 overflow-hidden">
         {/* Remote Video - Main video on mobile, equal on desktop */}
         <div className="relative bg-gray-800 rounded-lg overflow-hidden flex-1 min-h-0">
           <video
@@ -380,55 +380,59 @@ const VideoCallRoom = () => {
         </div>
       </div>
 
-      {/* Controls - Mobile Optimized */}
-      <div className="bg-gray-800 px-3 py-3 sm:px-6 sm:py-6 flex-shrink-0">
-        <div className="flex items-center justify-center space-x-3 sm:space-x-4">
+      {/* Controls - Mobile Optimized with Safe Area and Navbar Clearance */}
+      <div className="bg-gray-800 px-3 py-4 sm:px-6 sm:py-6 flex-shrink-0 video-controls-bottom">
+        <div className="flex items-center justify-center space-x-2 sm:space-x-4 max-w-md mx-auto">
           {/* Toggle Video */}
           <button
             onClick={toggleVideo}
-            className={`p-2.5 sm:p-4 rounded-full transition-colors ${
+            className={`p-3 sm:p-4 rounded-full transition-all touch-manipulation active:scale-95 ${
               isVideoEnabled
                 ? 'bg-gray-700 hover:bg-gray-600 text-white'
                 : 'bg-red-600 hover:bg-red-700 text-white'
             }`}
             title={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
+            aria-label={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
           >
-            {isVideoEnabled ? <Video size={20} className="sm:w-6 sm:h-6" /> : <VideoOff size={20} className="sm:w-6 sm:h-6" />}
+            {isVideoEnabled ? <Video size={24} className="sm:w-6 sm:h-6" /> : <VideoOff size={24} className="sm:w-6 sm:h-6" />}
           </button>
 
           {/* Toggle Audio */}
           <button
             onClick={toggleAudio}
-            className={`p-2.5 sm:p-4 rounded-full transition-colors ${
+            className={`p-3 sm:p-4 rounded-full transition-all touch-manipulation active:scale-95 ${
               isAudioEnabled
                 ? 'bg-gray-700 hover:bg-gray-600 text-white'
                 : 'bg-red-600 hover:bg-red-700 text-white'
             }`}
             title={isAudioEnabled ? 'Mute microphone' : 'Unmute microphone'}
+            aria-label={isAudioEnabled ? 'Mute microphone' : 'Unmute microphone'}
           >
-            {isAudioEnabled ? <Mic size={20} className="sm:w-6 sm:h-6" /> : <MicOff size={20} className="sm:w-6 sm:h-6" />}
+            {isAudioEnabled ? <Mic size={24} className="sm:w-6 sm:h-6" /> : <MicOff size={24} className="sm:w-6 sm:h-6" />}
           </button>
 
           {/* Toggle Screen Share */}
           <button
             onClick={toggleScreenShare}
-            className={`p-2.5 sm:p-4 rounded-full transition-colors ${
+            className={`p-3 sm:p-4 rounded-full transition-all touch-manipulation active:scale-95 ${
               isScreenSharing
                 ? 'bg-blue-600 hover:bg-blue-700 text-white'
                 : 'bg-gray-700 hover:bg-gray-600 text-white'
             }`}
             title={isScreenSharing ? 'Stop sharing' : 'Share screen'}
+            aria-label={isScreenSharing ? 'Stop sharing' : 'Share screen'}
           >
-            {isScreenSharing ? <MonitorOff size={20} className="sm:w-6 sm:h-6" /> : <Monitor size={20} className="sm:w-6 sm:h-6" />}
+            {isScreenSharing ? <MonitorOff size={24} className="sm:w-6 sm:h-6" /> : <Monitor size={24} className="sm:w-6 sm:h-6" />}
           </button>
 
           {/* End Call */}
           <button
             onClick={endCall}
-            className="p-2.5 sm:p-4 rounded-full bg-red-600 hover:bg-red-700 text-white transition-colors"
+            className="p-3 sm:p-4 rounded-full bg-red-600 hover:bg-red-700 text-white transition-all touch-manipulation active:scale-95"
             title="End call"
+            aria-label="End call"
           >
-            <PhoneOff size={20} className="sm:w-6 sm:h-6" />
+            <PhoneOff size={24} className="sm:w-6 sm:h-6" />
           </button>
         </div>
       </div>
@@ -436,6 +440,24 @@ const VideoCallRoom = () => {
       <style>{`
         .mirror {
           transform: scaleX(-1);
+        }
+        
+        /* Add extra padding on mobile to clear the bottom navbar */
+        @media (max-width: 768px) {
+          .video-controls-bottom {
+            padding-bottom: max(80px, calc(16px + env(safe-area-inset-bottom)));
+          }
+        }
+        
+        @media (min-width: 769px) {
+          .video-controls-bottom {
+            padding-bottom: max(16px, env(safe-area-inset-bottom));
+          }
+        }
+        
+        .touch-manipulation {
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
         }
       `}</style>
     </div>

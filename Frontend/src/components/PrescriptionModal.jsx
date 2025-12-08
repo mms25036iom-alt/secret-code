@@ -184,9 +184,9 @@ const PrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, patientN
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full my-8">
+        <div className="p-6 max-h-[85vh] overflow-y-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
@@ -281,7 +281,7 @@ const PrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, patientN
             </div>
 
             {/* Medications */}
-            <div>
+            <div className="pb-4">
               <div className="flex items-center justify-between mb-4">
                 <label className="block text-sm font-medium text-gray-700">
                   Medications *
@@ -296,7 +296,7 @@ const PrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, patientN
                 </button>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-4 mb-4">
                 {formData.medications.map((medication, index) => (
                   <div key={index} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-4">
@@ -417,7 +417,7 @@ const PrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, patientN
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+            <div className="flex items-center justify-end space-x-4 pt-6 pb-4 border-t border-gray-200 sticky bottom-0 bg-white z-10">
               <button
                 type="button"
                 onClick={onClose}

@@ -169,7 +169,7 @@ const SimpleVideoCall = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col overflow-hidden">
+    <div className="h-screen bg-gray-900 flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
       {/* Header - Mobile Optimized */}
       <div className="bg-gray-800 px-3 py-2 sm:px-6 sm:py-4 flex-shrink-0">
         <h1 className="text-white text-base sm:text-xl font-semibold">Video Call</h1>
@@ -177,7 +177,7 @@ const SimpleVideoCall = () => {
       </div>
 
       {/* Videos - Mobile First Layout */}
-      <div className="flex-1 p-2 sm:p-4 flex flex-col lg:flex-row gap-2 sm:gap-4 min-h-0">
+      <div className="flex-1 p-2 sm:p-4 flex flex-col lg:flex-row gap-2 sm:gap-4 overflow-hidden">
         {/* Remote Video - Main video on mobile, equal on desktop */}
         <div className="relative bg-gray-800 rounded-lg overflow-hidden flex-1 min-h-0">
           <video
@@ -215,31 +215,54 @@ const SimpleVideoCall = () => {
         </div>
       </div>
 
-      {/* Controls - Mobile Optimized */}
-      <div className="bg-gray-800 px-3 py-3 sm:px-6 sm:py-6 flex-shrink-0">
-        <div className="flex items-center justify-center space-x-3 sm:space-x-4">
+      {/* Controls - Mobile Optimized with Safe Area and Navbar Clearance */}
+      <div className="bg-gray-800 px-3 py-4 sm:px-6 sm:py-6 flex-shrink-0 video-controls-bottom">
+        <div className="flex items-center justify-center space-x-3 sm:space-x-4 max-w-md mx-auto">
           <button
             onClick={toggleVideo}
-            className={`p-2.5 sm:p-4 rounded-full ${isVideoOn ? 'bg-gray-700' : 'bg-red-600'} text-white hover:opacity-80 transition-all`}
+            className={`p-3 sm:p-4 rounded-full ${isVideoOn ? 'bg-gray-700' : 'bg-red-600'} text-white hover:opacity-80 transition-all touch-manipulation active:scale-95`}
+            aria-label={isVideoOn ? 'Turn off video' : 'Turn on video'}
           >
-            {isVideoOn ? <Video size={20} className="sm:w-6 sm:h-6" /> : <VideoOff size={20} className="sm:w-6 sm:h-6" />}
+            {isVideoOn ? <Video size={24} className="sm:w-6 sm:h-6" /> : <VideoOff size={24} className="sm:w-6 sm:h-6" />}
           </button>
 
           <button
             onClick={toggleAudio}
-            className={`p-2.5 sm:p-4 rounded-full ${isAudioOn ? 'bg-gray-700' : 'bg-red-600'} text-white hover:opacity-80 transition-all`}
+            className={`p-3 sm:p-4 rounded-full ${isAudioOn ? 'bg-gray-700' : 'bg-red-600'} text-white hover:opacity-80 transition-all touch-manipulation active:scale-95`}
+            aria-label={isAudioOn ? 'Mute' : 'Unmute'}
           >
-            {isAudioOn ? <Mic size={20} className="sm:w-6 sm:h-6" /> : <MicOff size={20} className="sm:w-6 sm:h-6" />}
+            {isAudioOn ? <Mic size={24} className="sm:w-6 sm:h-6" /> : <MicOff size={24} className="sm:w-6 sm:h-6" />}
           </button>
 
           <button
             onClick={endCall}
-            className="p-2.5 sm:p-4 rounded-full bg-red-600 text-white hover:bg-red-700 transition-all"
+            className="p-3 sm:p-4 rounded-full bg-red-600 text-white hover:bg-red-700 transition-all touch-manipulation active:scale-95"
+            aria-label="End call"
           >
-            <PhoneOff size={20} className="sm:w-6 sm:h-6" />
+            <PhoneOff size={24} className="sm:w-6 sm:h-6" />
           </button>
         </div>
       </div>
+      
+      <style>{`
+        /* Add extra padding on mobile to clear the bottom navbar */
+        @media (max-width: 768px) {
+          .video-controls-bottom {
+            padding-bottom: max(80px, calc(16px + env(safe-area-inset-bottom)));
+          }
+        }
+        
+        @media (min-width: 769px) {
+          .video-controls-bottom {
+            padding-bottom: max(16px, env(safe-area-inset-bottom));
+          }
+        }
+        
+        .touch-manipulation {
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+        }
+      `}</style>
     </div>
   );
 };

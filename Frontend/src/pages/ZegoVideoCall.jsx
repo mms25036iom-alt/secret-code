@@ -70,8 +70,43 @@ const ZegoVideoCall = () => {
   };
 
   return (
-    <div className="w-full h-screen">
+    <div className="w-full h-screen overflow-hidden">
       <div ref={containerRef} className="w-full h-full" />
+      <style>{`
+        /* Ensure Zego UI controls are visible on mobile and above bottom navbar */
+        @media (max-width: 768px) {
+          /* Make sure the control bar is visible and not cut off by bottom navbar */
+          [class*="zegocloud"] [class*="control"],
+          [class*="zegocloud"] [class*="toolbar"],
+          [class*="zegocloud"] [class*="bottom"] {
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            padding-bottom: max(80px, calc(20px + env(safe-area-inset-bottom))) !important;
+            z-index: 10000 !important;
+            background: rgba(0, 0, 0, 0.8) !important;
+          }
+          
+          /* Adjust video container to not overlap controls */
+          [class*="zegocloud"] [class*="video-container"] {
+            padding-bottom: 140px !important;
+          }
+          
+          /* Make buttons larger and more touch-friendly on mobile */
+          [class*="zegocloud"] button {
+            min-width: 52px !important;
+            min-height: 52px !important;
+            margin: 6px !important;
+          }
+        }
+        
+        /* Ensure full viewport height accounting for mobile browser bars */
+        #root {
+          height: 100vh;
+          height: 100dvh; /* Dynamic viewport height for mobile browsers */
+        }
+      `}</style>
     </div>
   );
 };
