@@ -16,15 +16,20 @@ const allowedOrigins = [
     "http://127.0.0.1:5173",
     "https://localhost:5173",
     "https://127.0.0.1:5173",
-    // Production URLs - UPDATE THESE after deploying frontend
+    // Specific IPs
+    "http://192.168.0.101:5173",
+    "https://192.168.0.101:5173",
+    "http://172.20.10.2:5173",
+    "https://172.20.10.2:5173",
+    // Production URLs
     "https://cureon.vercel.app",
     "https://cureon.netlify.app",
-    /^https?:\/\/.*\.vercel\.app$/,      // Any Vercel deployment
-    /^https?:\/\/.*\.netlify\.app$/,     // Any Netlify deployment
-    /^https?:\/\/.*\.onrender\.com$/,    // Any Render deployment
-    /^https?:\/\/192\.168\.\d+\.\d+:\d+$/,  // Allow local network (192.168.x.x)
-    /^https?:\/\/10\.\d+\.\d+\.\d+:\d+$/,   // Allow 10.x.x.x network
-    /^https?:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+:\d+$/  // Allow 172.16-31.x.x
+    /^https?:\/\/.*\.vercel\.app$/,
+    /^https?:\/\/.*\.netlify\.app$/,
+    /^https?:\/\/.*\.onrender\.com$/,
+    /^https?:\/\/192\.168\.\d+\.\d+:\d+$/,
+    /^https?:\/\/10\.\d+\.\d+\.\d+:\d+$/,
+    /^https?:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+:\d+$/
 ];
 
 // Socket.IO setup
@@ -228,9 +233,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Database connection
 const Appointment = require('./models/appointmentModel');
 const User = require('./models/userModel');
-const sendReminder = require('./utils/sendReminder');
-
-// Schedule reminders f/models/userModel');
 const sendReminder = require('./utils/sendReminder');
 
 // Schedule reminders for existing appointments on server start
