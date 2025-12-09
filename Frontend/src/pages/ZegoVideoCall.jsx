@@ -59,6 +59,21 @@ const ZegoVideoCall = () => {
         console.log('🎥 Starting video call initialization...');
         console.log('📱 Platform:', { isAndroid, isCapacitor, isMobile });
 
+        // Request camera and microphone permissions explicitly
+        try {
+          console.log('📹 Requesting camera/mic permissions...');
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user', width: 360, height: 640 },
+            audio: true
+          });
+          console.log('✅ Camera/mic permissions granted');
+          // Stop the test stream immediately
+          stream.getTracks().forEach(track => track.stop());
+        } catch (permError) {
+          console.error('❌ Permission denied:', permError);
+          throw new Error('Camera/microphone access denied. Please allow permissions and try again.');
+        }
+
         const userId = (user._id || `user_${Date.now()}`).replace(/[^a-zA-Z0-9_]/g, '_');
         const userName = user.name || 'User';
 
@@ -101,22 +116,27 @@ const ZegoVideoCall = () => {
           scenario: {
             mode: ZegoUIKitPrebuilt.OneONoneCall,
           },
-          
-          // IMPORTANT: Show pre-join view on Android - this helps initialize camera properly
-          showPreJoinView: true,
-          preJoinViewConfig: {
-            title: 'Video Call',
-          },
-          
-          // Video/Audio settings
+
+          // IMPORTANT: Disable pre-join view for immediate camera access
+          showPreJoinView: false,
+
+          // Video/Audio settings - CRITICAL for camera to work
           turnOnMicrophoneWhenJoining: true,
           turnOnCameraWhenJoining: true,
           useFrontFacingCamera: true,
-          
+
           // Use lower resolution on mobile for better compatibility
-          videoResolutionDefault: isMobile 
-            ? ZegoUIKitPrebuilt.VideoResolution_180P 
+          videoResolutionDefault: isMobile
+            ? ZegoUIKitPrebuilt.VideoResolution_360P
             : ZegoUIKitPrebuilt.VideoResolution_360P,
+
+          // Add video configuration to force camera initialization
+          videoConfig: {
+            width: 360,
+            height: 640,
+            frameRate: 15,
+            facingMode: 'user', // front camera
+          },
           
           // UI Controls
           showMyCameraToggleButton: true,
