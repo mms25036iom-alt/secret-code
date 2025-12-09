@@ -411,6 +411,47 @@ export const getDeviceInfo = async () => {
   }
 };
 
+// Clear all app data (useful for logout)
+export const clearAppData = async () => {
+  // Clear web storage
+  localStorage.clear();
+  sessionStorage.clear();
+  
+  // Clear cookies
+  document.cookie.split(";").forEach(function(c) { 
+    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+  });
+  
+  // Clear IndexedDB if available
+  if (window.indexedDB) {
+    try {
+      const databases = await window.indexedDB.databases();
+      databases.forEach(db => {
+        if (db.name) {
+          window.indexedDB.deleteDatabase(db.name);
+        }
+      });
+    } catch (e) {
+      console.log('IndexedDB clear error:', e);
+    }
+  }
+  
+  // On Capacitor, try to clear WebView cache
+  if (isCapacitorAvailable()) {
+    try {
+      // Clear any cached data in the WebView
+      if (window.caches) {
+        const cacheNames = await window.caches.keys();
+        await Promise.all(cacheNames.map(name => window.caches.delete(name)));
+      }
+    } catch (e) {
+      console.log('Cache clear error:', e);
+    }
+  }
+  
+  return true;
+};
+
 // Export all utilities
 export default {
   // Platform detection
@@ -463,5 +504,8 @@ export default {
   hideKeyboard,
   
   // Device info
-  getDeviceInfo
+  getDeviceInfo,
+  
+  // App data
+  clearAppData
 };

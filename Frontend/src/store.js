@@ -60,3 +60,13 @@ const middleware = [thunk];
 
 export const persistReduxStore = createStore(persistedReducer, initialState, composeWithDevTools(applyMiddleware(...middleware)));
 export const persistor = persistStore(persistReduxStore);
+
+// Function to purge persisted state (call on logout)
+export const purgePersistedState = async () => {
+    try {
+        await persistor.flush();
+        await persistor.purge();
+    } catch (e) {
+        console.error('Error purging persisted state:', e);
+    }
+};
