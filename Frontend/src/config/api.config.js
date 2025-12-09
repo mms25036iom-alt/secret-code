@@ -19,66 +19,58 @@ const isNativePlatform = () => {
 };
 
 // ============================================
-// IMPORTANT: UPDATE THESE URLs BEFORE BUILDING APK
+// CONFIGURATION OPTIONS
 // ============================================
 
-// Your production backend URL - UPDATE THIS!
-// Example: 'https://your-backend.onrender.com' or 'https://api.yourapp.com'
-const PRODUCTION_API_URL = import.meta.env.VITE_API_URL || 'http://192.168.0.101:4000';
+// Option 1: Use environment variable (recommended for production)
+// Set VITE_API_URL in .env file
 
-// Local development URL
-const LOCAL_API_URL = 'http://localhost:4000';
+// Option 2: Use deployed backend URL (works from anywhere)
+// UPDATE THIS with your actual Render URL after deploying
+const DEPLOYED_API_URL = 'https://cureon-backend.onrender.com';
 
-// For mobile testing on real device, use your computer's local IP
-// Find your IP: Windows (ipconfig) | Mac/Linux (ifconfig)
-// IMPORTANT: Update this with YOUR computer's IP address
-const LOCAL_IP = '192.168.0.101'; // UPDATE THIS WITH YOUR LOCAL IP
-const MOBILE_DEV_API_URL = `http://${LOCAL_IP}:4000`;
-
-// ============================================
-// MOBILE APK CONFIGURATION
-// ============================================
-// For APK testing, the app will use:
-// - Development build: MOBILE_DEV_API_URL (your local IP)
-// - Production build: PRODUCTION_API_URL (your production server)
-// ============================================
-
-// Determine which API URL to use
-export const API_BASE_URL = (() => {
-  // Priority 1: Use Vite proxy in development (empty string means use same origin)
-  if (import.meta.env.DEV && !isNativePlatform()) {
-    console.log('📡 Using Vite proxy for API requests (development mode)');
-    return ''; // Empty string will use the same origin, which Vite will proxy
+// Option 3: Auto-detect for local development
+// Uses the same host as the frontend (works when backend runs on same machine)
+const getAutoDetectedUrl = () => {
+  const hostname = window.location.hostname;
+  const protocol = window.location.protocol;
+  
+  // If accessing via IP or localhost, use that same host for API
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:4000';
   }
   
-  // Priority 2: Environment variable (if set)
-  if (import.meta.env.VITE_API_URL) {
-    console.log('📡 Using API URL from environment variable:', import.meta.env.VITE_API_URL);
+  // If accessing via network IP (192.168.x.x, 10.x.x.x, etc.)
+  // Use the same IP for the backend
+  return `${protocol}//${hostname}:4000`;
+};
+
+// ============================================
+// API URL SELECTION LOGIC
+// ============================================
+
+export const API_BASE_URL = (() => {
+  // Priority 1: Environment variable (highest priority)
+  if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL !== 'auto') {
+    console.log('📡 Using API URL from .env:', import.meta.env.VITE_API_URL);
     return import.meta.env.VITE_API_URL;
   }
   
-  // Priority 2: Mobile apps (Capacitor) - ALWAYS use local IP for testing
-  if (isNativePlatform()) {
-    // For mobile APK, always use local IP for testing
-    // Change this to PRODUCTION_API_URL when deploying to production
-    const mobileUrl = MOBILE_DEV_API_URL;
-    console.log('📱 Mobile app detected, using:', mobileUrl);
-    console.log('📱 Make sure your phone is on the same WiFi network!');
-    return mobileUrl;
+  // Priority 2: Production mode - use deployed URL
+  if (import.meta.env.PROD) {
+    console.log('🌐 Production mode, using deployed URL:', DEPLOYED_API_URL);
+    return DEPLOYED_API_URL;
   }
   
-  // Priority 3: Web apps
-  if (import.meta.env.DEV) {
-    console.log('🌐 Web development mode, using:', LOCAL_API_URL);
-    return LOCAL_API_URL;
-  }
-  
-  console.log('🌐 Web production mode, using:', PRODUCTION_API_URL);
-  return PRODUCTION_API_URL;
+  // Priority 3: Auto-detect based on current hostname
+  const autoUrl = getAutoDetectedUrl();
+  console.log('🔍 Auto-detected API URL:', autoUrl);
+  console.log('💡 Tip: Set VITE_API_URL in .env for custom URL');
+  return autoUrl;
 })();
 
 // Socket.IO URL (same as API base URL)
-export const SOCKET_URL = API_BASE_URL;
+export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || API_BASE_URL;
 
 // API Version
 export const API_VERSION = 'v1';

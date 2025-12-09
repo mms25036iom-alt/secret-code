@@ -10,18 +10,27 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 
+// Allowed origins for CORS
+const allowedOrigins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://localhost:5173",
+    "https://127.0.0.1:5173",
+    // Production URLs - UPDATE THESE after deploying frontend
+    "https://cureon.vercel.app",
+    "https://cureon.netlify.app",
+    /^https?:\/\/.*\.vercel\.app$/,      // Any Vercel deployment
+    /^https?:\/\/.*\.netlify\.app$/,     // Any Netlify deployment
+    /^https?:\/\/.*\.onrender\.com$/,    // Any Render deployment
+    /^https?:\/\/192\.168\.\d+\.\d+:\d+$/,  // Allow local network (192.168.x.x)
+    /^https?:\/\/10\.\d+\.\d+\.\d+:\d+$/,   // Allow 10.x.x.x network
+    /^https?:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+:\d+$/  // Allow 172.16-31.x.x
+];
+
 // Socket.IO setup
 const io = new Server(server, {
     cors: {
-        origin: [
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "https://localhost:5173",
-            "https://127.0.0.1:5173",
-            /^https?:\/\/192\.168\.\d+\.\d+:\d+$/,  // Allow local network (192.168.x.x)
-            /^https?:\/\/10\.\d+\.\d+\.\d+:\d+$/,   // Allow 10.x.x.x network
-            /^https?:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+:\d+$/  // Allow 172.16-31.x.x
-        ],
+        origin: allowedOrigins,
         methods: ["GET", "POST"],
         credentials: true
     }
