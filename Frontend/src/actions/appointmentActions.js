@@ -1,14 +1,14 @@
 import { MY_APPOINTMENTS_REQUEST, MY_APPOINTMENTS_SUCCESS, MY_APPOINTMENTS_FAIL, CREATE_APPOINTMENT_REQUEST, CREATE_APPOINTMENT_SUCCESS, CREATE_APPOINTMENT_FAIL, ALL_DOCTORS_REQUEST, ALL_DOCTORS_SUCCESS, ALL_DOCTORS_FAIL, CLEAR_ERRORS } from "../constants/appointmentConstants";
 import axios from '../axios';
 
-export const createAppointment = (doctorId, day, time, description, symptoms, symptomsAudio = null) => async (dispatch) => {
+export const createAppointment = (doctorId, day, time, description, symptoms, symptomsAudio = null, bookingFor = 'self', patientName = '', familyMemberDetails = null) => async (dispatch) => {
     try {
         dispatch({ type: CREATE_APPOINTMENT_REQUEST });
         
         const config = {
             headers: { "Content-Type": "application/json" }
         };
-        console.log('Creating appointment:', { doctorId, day, time, description, symptoms, symptomsAudio: symptomsAudio ? 'Audio URL present' : 'No audio' });
+        console.log('Creating appointment:', { doctorId, day, time, description, symptoms, symptomsAudio: symptomsAudio ? 'Audio URL present' : 'No audio', bookingFor, patientName });
 
         const { data } = await axios.post(
             '/appointment/new',
@@ -18,7 +18,10 @@ export const createAppointment = (doctorId, day, time, description, symptoms, sy
                 symptoms,
                 symptomsAudio,
                 day,
-                time 
+                time,
+                bookingFor,
+                patientName,
+                familyMemberDetails
             },
             config
         );

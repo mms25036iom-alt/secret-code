@@ -139,6 +139,74 @@ const userSchema = new mongoose.Schema({
             default: Date.now
         }
     }],
+    emergencyContacts: [{
+        name: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        relationship: {
+            type: String,
+            required: true,
+            enum: ['spouse', 'parent', 'child', 'sibling', 'friend', 'other']
+        },
+        phone: {
+            type: String,
+            required: true,
+            validate: {
+                validator: function(v) {
+                    return /^\d{10}$/.test(v);
+                },
+                message: "Please enter a valid 10-digit phone number"
+            }
+        },
+        isPrimary: {
+            type: Boolean,
+            default: false
+        },
+        addedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }],
+    familyMembers: [{
+        name: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        relationship: {
+            type: String,
+            required: true,
+            enum: ['spouse', 'parent', 'child', 'sibling', 'grandparent', 'grandchild', 'other']
+        },
+        age: {
+            type: Number,
+            min: 0,
+            max: 150
+        },
+        gender: {
+            type: String,
+            enum: ['male', 'female', 'other']
+        },
+        phone: {
+            type: String,
+            validate: {
+                validator: function(v) {
+                    return !v || /^\d{10}$/.test(v);
+                },
+                message: "Please enter a valid 10-digit phone number"
+            }
+        },
+        medicalConditions: {
+            type: String,
+            maxLength: 500
+        },
+        addedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }],
     createdAt: {
         type: Date,
         default: Date.now,

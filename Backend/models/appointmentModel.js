@@ -6,6 +6,22 @@ const appointmentSchema = new mongoose.Schema({
         ref: "User",
         required: [true, "Patient is required"]
     },
+    patientName: {
+        type: String,
+        trim: true,
+        maxLength: [100, "Patient name cannot exceed 100 characters"]
+    },
+    bookingFor: {
+        type: String,
+        enum: ['self', 'family_member'],
+        default: 'self'
+    },
+    familyMemberDetails: {
+        name: String,
+        relationship: String,
+        age: Number,
+        gender: String
+    },
     doctor: {
         type: mongoose.Schema.ObjectId,
         ref: "User",

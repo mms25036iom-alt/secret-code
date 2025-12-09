@@ -217,11 +217,11 @@ app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Database connection
-mongoose.connect(process.env.MONGODB_URI);
-
-// Add after database connection and before routes
 const Appointment = require('./models/appointmentModel');
 const User = require('./models/userModel');
+const sendReminder = require('./utils/sendReminder');
+
+// Schedule reminders f/models/userModel');
 const sendReminder = require('./utils/sendReminder');
 
 // Schedule reminders for existing appointments on server start
@@ -278,6 +278,17 @@ app.use('/api/v1', pharmacy);
 // Analysis routes (image/video analysis)
 const analysis = require('./routes/analysisRoutes');
 app.use('/api/v1', analysis);
+// Emergency routes
+const emergency = require('./routes/emergencyRoutes');
+app.use('/api/v1/emergency', emergency);
+
+// Health routes
+const health = require('./routes/healthRoutes');
+app.use('/api/v1/health', health);
+
+// ASHA Worker routes
+const asha = require('./routes/ashaRoutes');
+app.use('/api/v1/asha', asha);
 
 // 404 handler
 app.use("/", (req, res, next) => {

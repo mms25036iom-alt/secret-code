@@ -49,9 +49,11 @@ import Checkout from './pages/Checkout.jsx';
 import OrderTracking from './pages/OrderTracking.jsx';
 import PharmacyAdminPanel from './pages/PharmacyAdminPanel.jsx';
 import PharmacistDashboard from './pages/PharmacistDashboard.jsx';
+import SOSButton from './components/SOSButton.jsx';
 import CreateMedicine from './pages/CreateMedicine.jsx';
 import RoleBasedHomeRedirect from './components/PharmacistHomeRedirect.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import HealthDashboard from './pages/HealthDashboard.jsx';
 
 function App() {
   const { user, isAuthenticated } = useSelector((state) => state.user);
@@ -94,6 +96,10 @@ function App() {
           <Route path='/analysis/retinopathy' element={<ProtectedRoute><RetinolVisionAI /></ProtectedRoute>}></Route> 
           <Route path='/analysis/retinopathy-video' element={<ProtectedRoute><RetinopathyVideoAnalysis /></ProtectedRoute>} />
           <Route path='/health' element={<ProtectedRoute><HealthTips/></ProtectedRoute>}></Route>
+          <Route path='/health/dashboard' element={<ProtectedRoute><HealthDashboard/></ProtectedRoute>}></Route>
+          <Route path='/health/monitoring' element={<ProtectedRoute><HealthDashboard/></ProtectedRoute>}></Route>
+          <Route path='/health/sync' element={<ProtectedRoute><HealthDashboard/></ProtectedRoute>}></Route>
+          <Route path='/health/settings' element={<ProtectedRoute><HealthDashboard/></ProtectedRoute>}></Route>
           <Route path='/chat' element={<ProtectedRoute><Chat/></ProtectedRoute>}></Route>
           <Route path='/analysis/general' element={<ProtectedRoute><GeneralAnalysis/></ProtectedRoute>}></Route>
           
@@ -120,6 +126,8 @@ function App() {
         <Footer />
         <VideoCallNotificationListener />
         <BottomNavBar />
+        {/* SOS Button - Only for authenticated patients */}
+        {isAuthenticated && user?.role === 'user' && <SOSButton />}
         <ToastContainer
           position="top-right"
           autoClose={5000}

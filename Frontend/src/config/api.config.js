@@ -45,7 +45,13 @@ const MOBILE_DEV_API_URL = `http://${LOCAL_IP}:4000`;
 
 // Determine which API URL to use
 export const API_BASE_URL = (() => {
-  // Priority 1: Environment variable (if set)
+  // Priority 1: Use Vite proxy in development (empty string means use same origin)
+  if (import.meta.env.DEV && !isNativePlatform()) {
+    console.log('📡 Using Vite proxy for API requests (development mode)');
+    return ''; // Empty string will use the same origin, which Vite will proxy
+  }
+  
+  // Priority 2: Environment variable (if set)
   if (import.meta.env.VITE_API_URL) {
     console.log('📡 Using API URL from environment variable:', import.meta.env.VITE_API_URL);
     return import.meta.env.VITE_API_URL;

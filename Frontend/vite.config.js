@@ -37,6 +37,21 @@ try {
 
 export default defineConfig({
   plugins: [tailwindcss(), react()],
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false,
+    minify: 'terser',
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui-vendor': ['lucide-react', 'react-toastify']
+        }
+      }
+    }
+  },
   server: {
     host: "0.0.0.0", // Listen on all network interfaces (allows access from other devices)
     port: 5173,

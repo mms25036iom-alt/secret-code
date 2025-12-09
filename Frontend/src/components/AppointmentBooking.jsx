@@ -17,7 +17,10 @@ const AppointmentBooking = ({ onClose, preSelectedDoctor = null }) => {
         description: '',
         symptoms: '',
         day: '',
-        time: ''
+        time: '',
+        bookingFor: 'self',
+        familyMemberId: '',
+        patientName: ''
     });
 
     const [selectedDate, setSelectedDate] = useState('');
@@ -26,6 +29,7 @@ const AppointmentBooking = ({ onClose, preSelectedDoctor = null }) => {
     const [selectedDoctor, setSelectedDoctor] = useState(preSelectedDoctor);
     const [aiSuggestions, setAiSuggestions] = useState('');
     const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+    const [familyMembers, setFamilyMembers] = useState([]);
     
     // Audio recording states
     const [isRecordingSymptoms, setIsRecordingSymptoms] = useState(false);
@@ -41,6 +45,20 @@ const AppointmentBooking = ({ onClose, preSelectedDoctor = null }) => {
     useEffect(() => {
         dispatch(allDoctors());
         dispatch(clearErrors());
+        
+        // Fetch family members
+        const fetchFamilyMembers = async () => {
+            try {
+                const axios = (await import('../axios')).default;
+                const response = await axios.get('/api/v1/family-members');
+                if (response.data.success) {
+                    setFamilyMembers(response.data.familyMembers);
+                }
+            } catch (error) {
+                console.error('Failed to fetch family members:', error);
+            }
+        };
+        fetchFamilyMembers();
         
         // Cleanup on unmount
         return () => {
@@ -427,13 +445,30 @@ const AppointmentBooking = ({ onClose, preSelectedDoctor = null }) => {
             symptomsAudio: symptomsAudioUrl ? 'URL present' : 'No audio'
         });
 
+        // Prepare family member details if booking for family
+        let familyMemberDetails = null;
+        if (formData.bookingFor === 'family_member' && formData.familyMemberId) {
+            const member = familyMembers.find(m => m._id === formData.familyMemberId);
+            if (member) {
+                familyMemberDetails = {
+                    name: member.name,
+                    relationship: member.relationship,
+                    age: member.age,
+                    gender: member.gender
+                };
+            }
+        }
+
         dispatch(createAppointment(
             formData.doctor,
             formData.day,
             formData.time,
             finalDescription,
             finalSymptoms,
-            symptomsAudioUrl
+            symptomsAudioUrl,
+            formData.bookingFor,
+            formData.patientName,
+            familyMemberDetails
         ));
     };
 
@@ -480,6 +515,71 @@ const AppointmentBooking = ({ onClose, preSelectedDoctor = null }) => {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
+                        {/* Booking For Selection */}
+                        <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 md:p-4">
+                            <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">
+                                Booking For
+                            </label>
+                            <div className="grid grid-cols-2 gap-2 mb-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData(prev => ({ ...prev, bookingFor: 'self', familyMemberId: '', patientName: '' }))}
+                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                        formData.bookingFor === 'self'
+                                            ? 'bg-blue-600 text-white'
+                                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    Myself
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData(prev => ({ ...prev, bookingFor: 'family_member' }))}
+                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                        formData.bookingFor === 'family_member'
+                                            ? 'bg-blue-600 text-white'
+                                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    Family Member
+                                </button>
+                            </div>
+
+                            {formData.bookingFor === 'family_member' && (
+                                <div>
+                                    <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">
+                                        Select Family Member
+                                    </label>
+                                    {familyMembers.length > 0 ? (
+                                        <select
+                                            value={formData.familyMemberId}
+                                            onChange={(e) => {
+                                                const member = familyMembers.find(m => m._id === e.target.value);
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    familyMemberId: e.target.value,
+                                                    patientName: member ? member.name : ''
+                                                }));
+                                            }}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                            required={formData.bookingFor === 'family_member'}
+                                        >
+                                            <option value="">Select a family member</option>
+                                            {familyMembers.map(member => (
+                                                <option key={member._id} value={member._id}>
+                                                    {member.name} ({member.relationship}) {member.age ? `- ${member.age} yrs` : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <p className="text-xs text-gray-500 italic">
+                                            No family members added. Add them in your profile first.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
                         {/* Selected Doctor Display */}
                         {selectedDoctor && (
                             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-3 md:p-4">

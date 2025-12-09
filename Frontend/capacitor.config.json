@@ -1,6 +1,6 @@
 {
-  "appId": "com.cureon.telemed",
-  "appName": "cureon",
+  "appId": "com.cureon.health",
+  "appName": "Cureon Health",
   "webDir": "dist",
   "bundledWebRuntime": false,
   "server": {

@@ -1,22 +1,32 @@
 {
   "appId": "com.cureon.telemed",
-  "appName": "Cureon",
+  "appName": "Cureon Health",
   "webDir": "dist",
   "server": {
     "androidScheme": "https",
-    "cleartext": true
+    "cleartext": true,
+    "allowNavigation": [
+      "*"
+    ]
   },
   "android": {
     "allowMixedContent": true,
     "captureInput": true,
-    "webContentsDebuggingEnabled": true
+    "webContentsDebuggingEnabled": true,
+    "buildOptions": {
+      "keystorePath": "",
+      "keystorePassword": "",
+      "keystoreAlias": "",
+      "keystoreAliasPassword": ""
+    }
   },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 2000,
-      "backgroundColor": "#2563eb",
-      "androidScaleType": "CENTER_CROP",
-      "showSpinner": false
+      "backgroundColor": "#3B82F6",
+      "showSpinner": true,
+      "androidSpinnerStyle": "large",
+      "spinnerColor": "#FFFFFF"
     },
     "Keyboard": {
       "resize": "body",
@@ -25,7 +35,17 @@
     },
     "StatusBar": {
       "style": "dark",
-      "backgroundColor": "#2563eb"
+      "backgroundColor": "#3B82F6"
+    },
+    "Camera": {
+      "permissions": [
+        "camera",
+        "photos"
+      ]
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon_config_sample",
+      "iconColor": "#3B82F6"
     }
   }
 }

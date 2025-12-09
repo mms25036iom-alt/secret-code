@@ -17,6 +17,8 @@ import {
 import MedicalHistoryModal from '../MedicalHistoryModal';
 import UserQRCode from '../PatientQRCode';
 import MedicalDocuments from '../MedicalDocuments';
+import FamilyMembersManager from '../FamilyMembersManager';
+import EmergencyContactsManager from '../EmergencyContactsManager';
 
 const Profile = () => {
     const dispatch = useDispatch();
@@ -307,6 +309,16 @@ const Profile = () => {
                                         </button>
                                     </div>
                                 </div>
+                            )}
+
+                            {/* Family Members - Only for patients */}
+                            {user?.role === 'user' && (
+                                <FamilyMembersManager />
+                            )}
+
+                            {/* Emergency Contacts - Only for patients */}
+                            {user?.role === 'user' && (
+                                <EmergencyContactsManager />
                             )}
                         </div>
                     )}

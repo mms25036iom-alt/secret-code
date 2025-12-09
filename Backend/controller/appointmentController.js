@@ -13,7 +13,7 @@ const generateRoomId = () => {
 };
 
 exports.newAppointment = catchAsyncError(async (req, res, next) => {
-    const { doctor, description, symptoms, symptomsAudio, day, time } = req.body;
+    const { doctor, description, symptoms, symptomsAudio, day, time, bookingFor, patientName, familyMemberDetails } = req.body;
 
     console.log('📥 Received appointment data:', {
         doctor,
@@ -21,7 +21,9 @@ exports.newAppointment = catchAsyncError(async (req, res, next) => {
         symptoms: symptoms ? `"${symptoms}"` : 'empty',
         symptomsAudio: symptomsAudio ? 'URL present' : 'empty',
         day,
-        time
+        time,
+        bookingFor,
+        patientName
     });
 
     if (!doctor || !day || !time) {
@@ -56,6 +58,15 @@ exports.newAppointment = catchAsyncError(async (req, res, next) => {
     // Generate a random roomId
     const roomId = generateRoomId();
 
+    // Prepare patient name for display
+    const accountHolder = await User.findById(req.user._id);
+    let displayPatientName = patientName || accountHolder.name;
+    
+    // If booking for family member, format as "Family Member Name - Account Holder Name"
+    if (bookingFor === 'family_member' && patientName) {
+        displayPatientName = `${patientName} - ${accountHolder.name}`;
+    }
+
     const appointment = await Appointment.create({
         patient: req.user._id,
         doctor,
@@ -64,7 +75,10 @@ exports.newAppointment = catchAsyncError(async (req, res, next) => {
         symptomsAudio: symptomsAudio || null,
         day,
         time,
-        roomId // Add the roomId to the appointment
+        roomId, // Add the roomId to the appointment
+        bookingFor: bookingFor || 'self',
+        patientName: displayPatientName,
+        familyMemberDetails: familyMemberDetails || null
     });
     
     console.log('✅ Appointment created successfully:', {

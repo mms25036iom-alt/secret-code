@@ -1,0 +1,180 @@
+.patient-list-container {
+    min-height: 100vh;
+    background: #f5f7fa;
+    padding: 20px;
+}
+
+.patient-list-header {
+    max-width: 1200px;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.patient-list-header h1 {
+    color: #333;
+    font-size: 28px;
+}
+
+.patient-list-controls {
+    max-width: 1200px;
+    margin: 0 auto 20px;
+    display: flex;
+    gap: 16px;
+}
+
+.search-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 16px;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.status-filter {
+    padding: 12px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 16px;
+    background: white;
+    cursor: pointer;
+}
+
+.patient-count {
+    max-width: 1200px;
+    margin: 0 auto 16px;
+    color: #666;
+    font-size: 14px;
+}
+
+.patient-grid {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+.patient-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.patient-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.patient-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.patient-card-header h3 {
+    color: #333;
+    font-size: 20px;
+    margin: 0;
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status-active {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.status-delivered {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.status-referred {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.status-inactive {
+    background: #f5f5f5;
+    color: #757575;
+}
+
+.patient-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+}
+
+.info-label {
+    color: #666;
+    font-weight: 600;
+}
+
+.overdue-text {
+    color: #d32f2f;
+    font-weight: 600;
+}
+
+.high-risk-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: #fff3e0;
+    color: #e65100;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.no-patients {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+    font-size: 18px;
+}
+
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-size: 20px;
+    color: #667eea;
+}
+
+@media (max-width: 768px) {
+    .patient-list-controls {
+        flex-direction: column;
+    }
+
+    .patient-grid {
+        grid-template-columns: 1fr;
+    }
+}
