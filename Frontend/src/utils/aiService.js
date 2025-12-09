@@ -23,9 +23,9 @@ let geminiVisionModel = null;
 if (GEMINI_API_KEY) {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    // Use gemini-pro for text and gemini-pro-vision for images (stable models)
-    geminiModel = genAI.getGenerativeModel({ model: 'gemini-pro' });
-    geminiVisionModel = genAI.getGenerativeModel({ model: 'gemini-pro-vision' });
+    // Use gemini-1.5-pro for both text and vision (current stable model)
+    geminiModel = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+    geminiVisionModel = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
     console.log('✅ Gemini initialized as fallback');
   } catch (e) { console.error('Gemini init error:', e); }
 }
