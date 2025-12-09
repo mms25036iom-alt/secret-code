@@ -4,19 +4,21 @@
   "webDir": "dist",
   "bundledWebRuntime": false,
   "server": {
-    "androidScheme": "http",
+    "androidScheme": "https",
     "cleartext": true,
     "allowNavigation": [
-      "*"
+      "*",
+      "https://*.zegocloud.com/*",
+      "https://*.zego.im/*"
     ]
   },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 2000,
-      "backgroundColor": "#ffffff",
+      "backgroundColor": "#3B82F6",
       "showSpinner": true,
       "androidSpinnerStyle": "large",
-      "spinnerColor": "#4F46E5"
+      "spinnerColor": "#FFFFFF"
     },
     "Camera": {
       "permissions": [
@@ -31,7 +33,7 @@
     },
     "LocalNotifications": {
       "smallIcon": "ic_stat_icon_config_sample",
-      "iconColor": "#4F46E5"
+      "iconColor": "#3B82F6"
     },
     "PushNotifications": {
       "presentationOptions": [
@@ -45,6 +47,7 @@
     "allowMixedContent": true,
     "captureInput": true,
     "webContentsDebuggingEnabled": true,
-    "minWebViewVersion": 60
+    "minWebViewVersion": 60,
+    "appendUserAgent": "CureonHealth"
   }
 }

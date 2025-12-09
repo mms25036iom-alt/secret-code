@@ -6,7 +6,9 @@
     "androidScheme": "https",
     "cleartext": true,
     "allowNavigation": [
-      "*"
+      "*",
+      "https://*.zegocloud.com/*",
+      "https://*.zego.im/*"
     ]
   },
   "android": {

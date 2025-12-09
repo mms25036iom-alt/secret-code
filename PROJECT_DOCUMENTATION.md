@@ -514,6 +514,45 @@ npm run android:open   # Just open Android Studio
 
 ## Troubleshooting
 
+### Video Call Black Screen (Fixed)
+**Problem:** Video call shows black screen on Android/Web
+
+**Causes & Solutions:**
+1. **Camera permissions not granted** - The app now requests permissions before joining
+2. **WebView not configured for WebRTC** - MainActivity updated to auto-grant WebRTC permissions
+3. **Container not ready** - Added delay before initializing video call
+4. **Missing error handling** - Added comprehensive error states and retry functionality
+
+**Files Changed:**
+- `Frontend/src/pages/ZegoVideoCall.jsx` - Complete rewrite with permission handling
+- `Frontend/android/app/src/main/java/com/cureon/telemed/MainActivity.java` - WebRTC permission handling
+- `Frontend/android/app/src/main/res/xml/network_security_config.xml` - Added ZegoCloud domains
+
+**Key Features Added:**
+- Permission check before joining call
+- Loading state with status messages
+- Error state with retry button
+- Permission denied instructions
+- Proper cleanup on unmount
+- User join/leave notifications
+- Call duration timer
+- Custom control bar with mute/video/end call buttons
+- Pre-join view for camera preview
+- Screen sharing support
+
+### SOS/Emergency Button (Improved)
+**File:** `Frontend/src/components/SOSButton.jsx`
+
+**Features:**
+- Modern slide-up modal design
+- Tab-based UI (SOS Alert / Ambulance)
+- Emergency type selection (Chest Pain, Accident, Breathing Issue, Other)
+- 5-second countdown before sending SOS (with cancel option)
+- Location accuracy indicator
+- Quick call buttons (108, 100, 112)
+- Success state with follow-up actions
+- Animated pulse effect on button
+
 ### Logout Not Working
 1. Check browser DevTools → Application → Local Storage
 2. Ensure `persist:root` is being cleared

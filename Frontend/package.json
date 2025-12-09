@@ -71,6 +71,7 @@
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.475.0",
     "motion": "^12.4.7",
+    "openai": "^6.10.0",
     "prop-types": "^15.8.1",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
