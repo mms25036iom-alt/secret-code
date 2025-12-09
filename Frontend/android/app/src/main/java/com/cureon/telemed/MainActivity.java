@@ -15,119 +15,176 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.BridgeWebChromeClient;
+import com.getcapacitor.Plugin;
+import com.permissionx.guolindev.PermissionX;
+import com.permissionx.guolindev.callback.ExplainReasonCallback;
+import com.permissionx.guolindev.callback.RequestCallback;
+import com.permissionx.guolindev.request.ExplainScope;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class MainActivity extends BridgeActivity {
-    
-    private static final String TAG = "MainActivity";
-    private static final int PERMISSION_REQUEST_CODE = 1001;
-    
-    private String[] requiredPermissions = {
-        Manifest.permission.CAMERA,
-        Manifest.permission.RECORD_AUDIO,
-        Manifest.permission.MODIFY_AUDIO_SETTINGS
-    };
-    
+    private static final String TAG = "CureonMainActivity";
+    private static final int PERMISSION_REQUEST_CODE = 100;
+
     @Override
-    public void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState) {
+        // Register the ZegoCallPlugin before super.onCreate
+        registerPlugin(ZegoCallPlugin.class);
+        
         super.onCreate(savedInstanceState);
+        Log.d(TAG, "onCreate - Requesting permissions and setting up WebView");
+        requestAllPermissions();
+        requestSystemAlertWindowPermission();
         
-        // Request permissions on app start
-        requestRequiredPermissions();
+        // Setup WebView for WebRTC immediately after creation
+        // Use a small delay to ensure the bridge is ready
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            setupWebViewForWebRTC();
+        }, 500);
     }
-    
-    @Override
-    public void onStart() {
-        super.onStart();
-        
-        // Configure WebView for WebRTC
-        configureWebView();
-    }
-    
-    private void requestRequiredPermissions() {
-        List<String> permissionsToRequest = new ArrayList<>();
-        
-        for (String permission : requiredPermissions) {
-            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
-                permissionsToRequest.add(permission);
-            }
-        }
-        
-        if (!permissionsToRequest.isEmpty()) {
-            ActivityCompat.requestPermissions(
-                this,
-                permissionsToRequest.toArray(new String[0]),
-                PERMISSION_REQUEST_CODE
-            );
-        }
-    }
-    
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        
-        if (requestCode == PERMISSION_REQUEST_CODE) {
-            for (int i = 0; i < permissions.length; i++) {
-                if (grantResults[i] == PackageManager.PERMISSION_GRANTED) {
-                    Log.d(TAG, "Permission granted: " + permissions[i]);
-                } else {
-                    Log.w(TAG, "Permission denied: " + permissions[i]);
+
+    private void requestSystemAlertWindowPermission() {
+        PermissionX.init(this)
+            .permissions(Manifest.permission.SYSTEM_ALERT_WINDOW)
+            .onExplainRequestReason(new ExplainReasonCallback() {
+                @Override
+                public void onExplainReason(@NonNull ExplainScope scope, @NonNull List<String> deniedList) {
+                    String message = "We need your consent for the following permissions in order to use the offline call function properly";
+                    scope.showRequestReasonDialog(deniedList, message, "Allow", "Deny");
                 }
-            }
+            })
+            .request(new RequestCallback() {
+                @Override
+                public void onResult(boolean allGranted, @NonNull List<String> grantedList,
+                        @NonNull List<String> deniedList) {
+                    Log.d(TAG, "SYSTEM_ALERT_WINDOW permission: " + (allGranted ? "GRANTED" : "DENIED"));
+                }
+            });
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        Log.d(TAG, "onResume - Setting up WebView for WebRTC");
+        setupWebViewForWebRTC();
+    }
+
+    private void requestAllPermissions() {
+        List<String> permissions = new ArrayList<>();
+        
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) 
+                != PackageManager.PERMISSION_GRANTED) {
+            permissions.add(Manifest.permission.CAMERA);
+        }
+        
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) 
+                != PackageManager.PERMISSION_GRANTED) {
+            permissions.add(Manifest.permission.RECORD_AUDIO);
+        }
+        
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.MODIFY_AUDIO_SETTINGS) 
+                != PackageManager.PERMISSION_GRANTED) {
+            permissions.add(Manifest.permission.MODIFY_AUDIO_SETTINGS);
+        }
+
+        if (!permissions.isEmpty()) {
+            Log.d(TAG, "Requesting permissions: " + permissions);
+            ActivityCompat.requestPermissions(this, 
+                permissions.toArray(new String[0]), PERMISSION_REQUEST_CODE);
+        } else {
+            Log.d(TAG, "All permissions already granted");
         }
     }
-    
-    private void configureWebView() {
+
+    private void setupWebViewForWebRTC() {
         try {
             WebView webView = getBridge().getWebView();
+            if (webView == null) {
+                Log.e(TAG, "WebView is null");
+                return;
+            }
+
+            WebSettings settings = webView.getSettings();
             
-            if (webView != null) {
-                // Configure WebView settings for WebRTC
-                WebSettings settings = webView.getSettings();
-                settings.setJavaScriptEnabled(true);
-                settings.setMediaPlaybackRequiresUserGesture(false);
-                settings.setDomStorageEnabled(true);
-                settings.setAllowFileAccess(true);
-                settings.setAllowContentAccess(true);
-                settings.setJavaScriptCanOpenWindowsAutomatically(true);
-                
-                // Enable mixed content for development
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-                }
-                
-                // Set WebChromeClient to handle permission requests
-                webView.setWebChromeClient(new WebChromeClient() {
-                    @Override
-                    public void onPermissionRequest(final PermissionRequest request) {
-                        Log.d(TAG, "WebView permission request: " + java.util.Arrays.toString(request.getResources()));
-                        
-                        // Auto-grant all WebRTC permissions
+            // Essential for WebRTC
+            settings.setJavaScriptEnabled(true);
+            settings.setDomStorageEnabled(true);
+            settings.setMediaPlaybackRequiresUserGesture(false);
+            settings.setAllowFileAccess(true);
+            settings.setAllowContentAccess(true);
+            settings.setJavaScriptCanOpenWindowsAutomatically(true);
+            
+            // Database and cache
+            settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+            
+            // Mixed content for HTTPS/HTTP
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            }
+            
+            // Hardware acceleration
+            webView.setLayerType(WebView.LAYER_TYPE_HARDWARE, null);
+
+            // Custom WebChromeClient that extends Capacitor's and handles WebRTC permissions
+            webView.setWebChromeClient(new BridgeWebChromeClient(getBridge()) {
+                @Override
+                public void onPermissionRequest(final PermissionRequest request) {
+                    Log.d(TAG, "WebRTC Permission Request: " + Arrays.toString(request.getResources()));
+                    
+                    // Check Android permissions
+                    boolean hasCam = ContextCompat.checkSelfPermission(MainActivity.this, 
+                        Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
+                    boolean hasMic = ContextCompat.checkSelfPermission(MainActivity.this, 
+                        Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+
+                    Log.d(TAG, "Android permissions - Camera: " + hasCam + ", Mic: " + hasMic);
+
+                    // Filter requested resources based on what we have permission for
+                    List<String> grantedResources = new ArrayList<>();
+                    for (String resource : request.getResources()) {
+                        if (resource.equals(PermissionRequest.RESOURCE_VIDEO_CAPTURE) && hasCam) {
+                            grantedResources.add(resource);
+                        } else if (resource.equals(PermissionRequest.RESOURCE_AUDIO_CAPTURE) && hasMic) {
+                            grantedResources.add(resource);
+                        } else if (!resource.equals(PermissionRequest.RESOURCE_VIDEO_CAPTURE) 
+                                && !resource.equals(PermissionRequest.RESOURCE_AUDIO_CAPTURE)) {
+                            // Grant other resources (like protected media)
+                            grantedResources.add(resource);
+                        }
+                    }
+
+                    if (hasCam && hasMic) {
+                        // All permissions granted, grant all requested resources
                         runOnUiThread(() -> {
-                            try {
-                                request.grant(request.getResources());
-                                Log.d(TAG, "WebView permissions granted");
-                            } catch (Exception e) {
-                                Log.e(TAG, "Error granting permissions: " + e.getMessage());
-                            }
+                            Log.d(TAG, "Granting all WebRTC permissions");
+                            request.grant(request.getResources());
+                        });
+                    } else if (!grantedResources.isEmpty()) {
+                        // Grant what we can
+                        runOnUiThread(() -> {
+                            Log.d(TAG, "Granting partial WebRTC permissions: " + grantedResources);
+                            request.grant(grantedResources.toArray(new String[0]));
+                        });
+                        // Request missing permissions
+                        if (!hasCam || !hasMic) {
+                            requestAllPermissions();
+                        }
+                    } else {
+                        // No permissions, request them and grant anyway to avoid blocking
+                        Log.d(TAG, "No permissions, requesting and granting anyway");
+                        requestAllPermissions();
+                        runOnUiThread(() -> {
+                            request.grant(request.getResources());
                         });
                     }
-                    
-                    @Override
-                    public void onPermissionRequestCanceled(PermissionRequest request) {
-                        Log.d(TAG, "WebView permission request canceled");
-                        super.onPermissionRequestCanceled(request);
-                    }
-                });
-                
-                Log.d(TAG, "WebView configured for WebRTC");
-            } else {
-                Log.w(TAG, "WebView is null");
-            }
+                }
+            });
         } catch (Exception e) {
-            Log.e(TAG, "Error configuring WebView: " + e.getMessage());
+            Log.e(TAG, "Error setting up WebView for WebRTC", e);
         }
     }
 }

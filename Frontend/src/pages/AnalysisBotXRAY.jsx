@@ -103,79 +103,13 @@ function AnalysisBotXRAY() {
         setIsRedirecting(false);
 
         try {
-            // Use Gemini AI for X-ray analysis with fallback keys
-            const API_KEYS = [
-                import.meta.env.VITE_GEMINI_API_KEY,
-                "AIzaSyAerBoGRKAl_AMK4uGDG1re1u86sNxa28o",
-                "AIzaSyBjhpEfKWZa5jNA6iV-Rs6qmMhCnbtrJA8",
-                import.meta.env.VITE_GEMINI_API_KEY_BACKUP,
-                "AIzaSyACJ3rdIqTTxzeQAm25_95nZEXNHo9PqtoI"
-            ].filter(Boolean);
+            // Import and use the centralized AI service
+            const { analyzeMedicalImage } = await import('../utils/aiService');
             
-            let currentKeyIndex = 0;
-            const GEMINI_API_KEY = API_KEYS[currentKeyIndex];
-            
-            if (!GEMINI_API_KEY) {
-                throw new Error('Gemini API key not configured. Please add VITE_GEMINI_API_KEY to your .env file.');
-            }
-
             // Extract base64 data (remove data:image/...;base64, prefix)
             const base64Data = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
-            
-            // Determine mime type from base64 string
-            const mimeType = base64Image.match(/data:([^;]+);/)?.[1] || 'image/jpeg';
 
-            const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                {
-                                    text: `You are a medical AI assistant analyzing an X-ray image. Please provide a detailed analysis including:
-                                    
-1. **Image Description**: What you observe in the X-ray
-2. **Potential Findings**: Any abnormalities or notable features
-3. **Recommendations**: Suggested next steps
-4. **Emergency Level**: Rate from 1-3 where:
-   - Level 1: High Emergency (immediate medical attention required)
-   - Level 2: Moderate Emergency (prompt medical consultation needed)
-   - Level 3: Low Emergency (routine follow-up recommended)
-
-Format your response clearly with these sections. End with "Emergency Level: [1/2/3]"
-
-IMPORTANT: This is an AI-assisted analysis and should not replace professional medical diagnosis.`
-                                },
-                                {
-                                    inline_data: {
-                                        mime_type: mimeType,
-                                        data: base64Data
-                                    }
-                                }
-                            ]
-                        }]
-                    })
-                }
-            );
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                const errorMessage = errorData.error?.message || 'Failed to analyze image';
-                
-                // Check if it's a quota error
-                if (errorMessage.includes('quota') || errorMessage.includes('Quota exceeded')) {
-                    throw new Error('API quota exceeded. Please try again in a few moments or contact support for a new API key.');
-                }
-                
-                throw new Error(errorMessage);
-            }
-
-            const data = await response.json();
-            const analysisText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            const analysisText = await analyzeMedicalImage(base64Data, 'xray');
             
             if (!analysisText) {
                 throw new Error('No analysis received from AI');
@@ -194,7 +128,7 @@ IMPORTANT: This is an AI-assisted analysis and should not replace professional m
             dispatch(addMedicalHistory(analysisText, imageUrlForHistory));
         } catch (error) {
             console.error('Error processing the image:', error);
-            setAnalysis(`Error: ${error.message}\n\nPlease ensure:\n1. Your Gemini API key is configured correctly\n2. The image is a valid X-ray\n3. You have internet connectivity`);
+            setAnalysis(`Error: ${error.message}\n\nPlease ensure:\n1. Your OpenAI API key is configured correctly\n2. The image is a valid X-ray\n3. You have internet connectivity`);
         } finally {
             setIsAnalyzing(false);
         }

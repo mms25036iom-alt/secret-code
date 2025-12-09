@@ -8,13 +8,16 @@
     "allowNavigation": [
       "*",
       "https://*.zegocloud.com/*",
-      "https://*.zego.im/*"
+      "https://*.zego.im/*",
+      "wss://*.zegocloud.com/*",
+      "wss://*.zego.im/*"
     ]
   },
   "android": {
     "allowMixedContent": true,
     "captureInput": true,
     "webContentsDebuggingEnabled": true,
+    "useLegacyBridge": false,
     "buildOptions": {
       "keystorePath": "",
       "keystorePassword": "",

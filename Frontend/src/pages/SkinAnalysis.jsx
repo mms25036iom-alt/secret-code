@@ -1,21 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { analyzeMedicalImage, simplifyMedicalAnalysis } from "../utils/aiService";
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useNavigate } from "react-router-dom";
-
-// Initialize Gemini AI with fallback keys
-const API_KEYS = [
-    "AIzaSyAerBoGRKAl_AMK4uGDG1re1u86sNxa28o",
-    import.meta.env.VITE_GEMINI_API_KEY,
-    "AIzaSyBjhpEfKWZa5jNA6iV-Rs6qmMhCnbtrJA8",
-    import.meta.env.VITE_GEMINI_API_KEY_BACKUP,
-    "AIzaSyACJ3rdIqTTxzeQAm25_95nZEXNHo9PqtoI"
-].filter(Boolean);
-
-let currentKeyIndex = 0;
-const genAI = new GoogleGenerativeAI(API_KEYS[currentKeyIndex]);
 
 const uploadToCloudinary = async (file) => {
     const formData = new FormData();
@@ -56,17 +44,7 @@ const formatAnalysisResults = (text) => {
 
 const simplifyAnalysis = async (medicalAnalysis) => {
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        
-        const prompt = `You are a medical translator who specializes in explaining complex medical terms in simple, easy-to-understand language. 
-        Please convert this skin condition analysis into simple terms that someone without a medical background can understand.
-        Keep the same structure but use everyday language. Here's the analysis:
-        ${medicalAnalysis}
-        Please provide the simplified version while maintaining the key information.`;
-
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        return response.text();
+        return await simplifyMedicalAnalysis(medicalAnalysis);
     } catch (error) {
         console.error("Error simplifying analysis:", error);
         throw new Error("Failed to simplify the analysis. Please try again.");
@@ -134,25 +112,8 @@ export default function SkinAnalysis() {
                 reader.onerror = reject;
             });
 
-            // Get the model
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-            // Create the prompt parts
-            const prompt = "You are an expert dermatologist specializing in skin condition analysis. Analyze the provided skin image and determine whether it indicates any skin conditions, diseases, or abnormalities. Provide a confidence score (in percentage) for your diagnosis. If a condition is detected, also mention the type and severity with a probability score and in a user-friendly language. IMPORTANT: At the end of your analysis, include exactly one of these emergency levels: 'Emergency Level: 1' (beginner level - minor issues, routine care), 'Emergency Level: 2' (intermediate level - moderate concerns, prompt attention needed), 'Emergency Level: 3' (high level - serious conditions, immediate attention required), or 'Emergency Level: 0' (no emergency - normal findings).";
-
-            // Generate content
-            const result = await model.generateContent([
-                prompt,
-                {
-                    inlineData: {
-                        mimeType: "image/jpeg",
-                        data: base64Image
-                    }
-                }
-            ]);
-
-            const generatedResponse = await result.response;
-            const text = generatedResponse.text();
+            // Use OpenAI for analysis
+            const text = await analyzeMedicalImage(base64Image, 'skin');
             setAnalysis(text);
 
             // Extract emergency level from the analysis
@@ -425,12 +386,35 @@ export default function SkinAnalysis() {
                                     className="hidden" 
                                     id="fileInput"
                                 />
-                                <label 
-                                    htmlFor="fileInput" 
-                                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors"
-                                >
-                                    Select Image
-                                </label>
+                                <input 
+                                    type="file" 
+                                    accept="image/*"
+                                    capture="environment"
+                                    onChange={handleImageChange} 
+                                    className="hidden" 
+                                    id="cameraInput"
+                                />
+                                <div className="flex flex-col sm:flex-row gap-3">
+                                    <label 
+                                        htmlFor="fileInput" 
+                                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors flex items-center gap-2"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                        </svg>
+                                        Browse Files
+                                    </label>
+                                    <label 
+                                        htmlFor="cameraInput" 
+                                        className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors flex items-center gap-2"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        Take Photo
+                                    </label>
+                                </div>
                             </div>
                         ) : (
                             <div className="flex flex-col items-center">

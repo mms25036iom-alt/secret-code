@@ -7,9 +7,7 @@
     "androidScheme": "https",
     "cleartext": true,
     "allowNavigation": [
-      "*",
-      "https://*.zegocloud.com/*",
-      "https://*.zego.im/*"
+      "*"
     ]
   },
   "plugins": {
@@ -48,6 +46,7 @@
     "captureInput": true,
     "webContentsDebuggingEnabled": true,
     "minWebViewVersion": 60,
-    "appendUserAgent": "CureonHealth"
+    "appendUserAgent": "CureonHealth",
+    "useLegacyBridge": false
   }
 }

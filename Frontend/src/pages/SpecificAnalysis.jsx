@@ -15,7 +15,7 @@ import 'jspdf-autotable';
 import { useSelector, useDispatch } from 'react-redux';
 import { addMedicalHistory } from '../actions/userActions';
 import Disclaimer from '../components/Disclaimer';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { analyzeMedicalImage, simplifyMedicalAnalysis } from '../utils/aiService';
 import AnalysisResults from '../components/AnalysisResults';
 
 function SpecificAnalysis() {

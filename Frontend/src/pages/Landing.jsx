@@ -57,6 +57,16 @@ const Landing = () => {
       iconColor: "text-purple-600"
     },
     {
+      id: 5,
+      icon: <span className="text-5xl">🏥</span>,
+      title: "AI Medical Scanner",
+      description: "Advanced AI analysis for ECG, X-Ray, MRI, Skin & more",
+      route: "/medical-ai",
+      gradient: "from-indigo-500 to-cyan-500",
+      bgColor: "bg-indigo-50",
+      iconColor: "text-indigo-600"
+    },
+    {
       id: 3,
       icon: <Heart className="w-16 h-16" />,
       title: t('landing.services.healthTips.title'),

@@ -8,19 +8,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { addMedicalHistory } from '../actions/userActions';
 import Header from '../components/Header';
 import Disclaimer from '../components/Disclaimer';
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-// Initialize Gemini AI with fallback keys
-const API_KEYS = [
-    "AIzaSyAerBoGRKAl_AMK4uGDG1re1u86sNxa28o",
-    import.meta.env.VITE_GEMINI_API_KEY,
-    "AIzaSyBjhpEfKWZa5jNA6iV-Rs6qmMhCnbtrJA8",
-    import.meta.env.VITE_GEMINI_API_KEY_BACKUP,
-    "AIzaSyACJ3rdIqTTxzeQAm25_95nZEXNHo9PqtoI"
-].filter(Boolean);
-
-let currentKeyIndex = 0;
-const genAI = new GoogleGenerativeAI(API_KEYS[currentKeyIndex]);
+import { simplifyMedicalAnalysis } from '../utils/aiService';
 
 const formatAnalysisResults = (text) => {
     const lines = text.split('\n').filter(line => line.trim() !== '');
@@ -44,19 +32,7 @@ const formatAnalysisResults = (text) => {
 
 const simplifyAnalysis = async (medicalAnalysis) => {
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-        
-        const prompt = `You are a medical translator who specializes in explaining complex medical terms in simple, easy-to-understand language. 
-        Please convert this medical analysis into simple terms that someone without a medical background can understand.
-        Keep the same structure but use everyday language. Here's the analysis:
-
-        ${medicalAnalysis}
-
-        Please provide the simplified version while maintaining the key information.`;
-
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        return response.text();
+        return await simplifyMedicalAnalysis(medicalAnalysis);
     } catch (error) {
         console.error("Error simplifying analysis:", error);
         throw new Error("Failed to simplify the analysis. Please try again.");

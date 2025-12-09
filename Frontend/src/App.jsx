@@ -54,6 +54,7 @@ import CreateMedicine from './pages/CreateMedicine.jsx';
 import RoleBasedHomeRedirect from './components/PharmacistHomeRedirect.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import HealthDashboard from './pages/HealthDashboard.jsx';
+import MedicalAnalysis from './pages/MedicalAnalysis.jsx';
 
 function App() {
   const { user, isAuthenticated } = useSelector((state) => state.user);
@@ -102,6 +103,8 @@ function App() {
           <Route path='/health/settings' element={<ProtectedRoute><HealthDashboard/></ProtectedRoute>}></Route>
           <Route path='/chat' element={<ProtectedRoute><Chat/></ProtectedRoute>}></Route>
           <Route path='/analysis/general' element={<ProtectedRoute><GeneralAnalysis/></ProtectedRoute>}></Route>
+          <Route path='/analysis/advanced' element={<ProtectedRoute><MedicalAnalysis/></ProtectedRoute>}></Route>
+          <Route path='/medical-ai' element={<ProtectedRoute><MedicalAnalysis/></ProtectedRoute>}></Route>
           
           <Route path='/telemedicine' element={<ProtectedRoute><VideoCall /></ProtectedRoute>} />
           <Route path='/video-room' element={<ProtectedRoute><ZegoVideoCall /></ProtectedRoute>} />

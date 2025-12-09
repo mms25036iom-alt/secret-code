@@ -1,279 +1,229 @@
 /**
  * Unified AI Service
- * Uses OpenAI as primary and Gemini as fallback
+ * Uses OpenAI (primary) with Gemini as fallback
  */
 
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Initialize OpenAI
-const openai = new OpenAI({
-    apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-    dangerouslyAllowBrowser: true // Required for client-side usage
-});
+// Initialize OpenAI (Primary)
+const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
+let openai = null;
+if (OPENAI_API_KEY) {
+  try {
+    openai = new OpenAI({ apiKey: OPENAI_API_KEY, dangerouslyAllowBrowser: true });
+    console.log('✅ OpenAI initialized');
+  } catch (e) { console.error('OpenAI init error:', e); }
+}
 
-// Initialize Gemini as fallback
-const GEMINI_API_KEYS = [
-    import.meta.env.VITE_GEMINI_API_KEY,
-    import.meta.env.VITE_GEMINI_API_KEY_BACKUP,
-    "AIzaSyAerBoGRKAl_AMK4uGDG1re1u86sNxa28o",
-    "AIzaSyBjhpEfKWZa5jNA6iV-Rs6qmMhCnbtrJA8",
-].filter(Boolean);
+// Initialize Gemini (Fallback)
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+let geminiModel = null;
+let geminiVisionModel = null;
+if (GEMINI_API_KEY) {
+  try {
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    // Use gemini-pro for text and gemini-pro-vision for images (stable models)
+    geminiModel = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    geminiVisionModel = genAI.getGenerativeModel({ model: 'gemini-pro-vision' });
+    console.log('✅ Gemini initialized as fallback');
+  } catch (e) { console.error('Gemini init error:', e); }
+}
 
-let currentGeminiKeyIndex = 0;
-let genAI = GEMINI_API_KEYS.length > 0 ? new GoogleGenerativeAI(GEMINI_API_KEYS[0]) : null;
-
-// Rotate Gemini key on failure
-const rotateGeminiKey = () => {
-    currentGeminiKeyIndex = (currentGeminiKeyIndex + 1) % GEMINI_API_KEYS.length;
-    genAI = new GoogleGenerativeAI(GEMINI_API_KEYS[currentGeminiKeyIndex]);
-    console.log(`🔄 Rotated to Gemini key index: ${currentGeminiKeyIndex}`);
-};
+console.log('🤖 AI Service:', { hasOpenAI: !!openai, hasGemini: !!geminiModel });
 
 /**
- * Generate text using AI (OpenAI primary, Gemini fallback)
+ * Generate text - tries OpenAI first, then Gemini
  */
 export const generateText = async (prompt, options = {}) => {
-    const { maxTokens = 2000, temperature = 0.7 } = options;
+  const { maxTokens = 2000, temperature = 0.7 } = options;
 
-    // Try OpenAI first
-    if (import.meta.env.VITE_OPENAI_API_KEY) {
-        try {
-            console.log('🤖 Trying OpenAI...');
-            const response = await openai.chat.completions.create({
-                model: 'gpt-4o-mini',
-                messages: [{ role: 'user', content: prompt }],
-                max_tokens: maxTokens,
-                temperature: temperature,
-            });
-            console.log('✅ OpenAI response received');
-            return response.choices[0].message.content;
-        } catch (error) {
-            console.warn('⚠️ OpenAI failed:', error.message);
-        }
+  // Try OpenAI first
+  if (openai) {
+    try {
+      console.log('🤖 Using OpenAI...');
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: maxTokens,
+        temperature,
+      });
+      console.log('✅ OpenAI response');
+      return response.choices[0].message.content;
+    } catch (e) {
+      console.error('OpenAI error:', e.message);
     }
+  }
 
-    // Fallback to Gemini
-    if (genAI) {
-        for (let attempt = 0; attempt < GEMINI_API_KEYS.length; attempt++) {
-            try {
-                console.log(`🔮 Trying Gemini (attempt ${attempt + 1})...`);
-                const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-                const result = await model.generateContent(prompt);
-                const response = await result.response;
-                console.log('✅ Gemini response received');
-                return response.text();
-            } catch (error) {
-                console.warn(`⚠️ Gemini attempt ${attempt + 1} failed:`, error.message);
-                rotateGeminiKey();
-            }
-        }
+  // Fallback to Gemini
+  if (geminiModel) {
+    try {
+      console.log('🤖 Using Gemini...');
+      const result = await geminiModel.generateContent(prompt);
+      console.log('✅ Gemini response');
+      return result.response.text();
+    } catch (e) {
+      console.error('Gemini error:', e.message);
     }
+  }
 
-    throw new Error('All AI services failed. Please try again later.');
+  throw new Error('AI service unavailable');
 };
 
 /**
- * Analyze image using AI (OpenAI primary, Gemini fallback)
+ * Analyze image - tries OpenAI Vision first, then Gemini Vision
  */
 export const analyzeImage = async (imageBase64, prompt, options = {}) => {
-    const { maxTokens = 4000 } = options;
+  const { maxTokens = 4000 } = options;
+  const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+  
+  let lastError = null;
 
-    // Clean base64 if needed
-    const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-
-    // Try OpenAI first (GPT-4 Vision)
-    if (import.meta.env.VITE_OPENAI_API_KEY) {
-        try {
-            console.log('🤖 Trying OpenAI Vision...');
-            const response = await openai.chat.completions.create({
-                model: 'gpt-4o-mini',
-                messages: [
-                    {
-                        role: 'user',
-                        content: [
-                            { type: 'text', text: prompt },
-                            {
-                                type: 'image_url',
-                                image_url: {
-                                    url: `data:image/jpeg;base64,${cleanBase64}`,
-                                },
-                            },
-                        ],
-                    },
-                ],
-                max_tokens: maxTokens,
-            });
-            console.log('✅ OpenAI Vision response received');
-            return response.choices[0].message.content;
-        } catch (error) {
-            console.warn('⚠️ OpenAI Vision failed:', error.message);
-        }
+  // Try OpenAI Vision first
+  if (openai) {
+    try {
+      console.log('🤖 Using OpenAI Vision...');
+      console.log('📷 Image base64 length:', cleanBase64.length);
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',  // Use gpt-4o for better vision capabilities
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${cleanBase64}`, detail: 'high' } }
+          ]
+        }],
+        max_tokens: maxTokens,
+      });
+      console.log('✅ OpenAI Vision response received');
+      return response.choices[0].message.content;
+    } catch (e) {
+      console.error('OpenAI Vision error:', e.message, e);
+      lastError = e;
+      // Continue to fallback
     }
+  }
 
-    // Fallback to Gemini
-    if (genAI) {
-        for (let attempt = 0; attempt < GEMINI_API_KEYS.length; attempt++) {
-            try {
-                console.log(`🔮 Trying Gemini Vision (attempt ${attempt + 1})...`);
-                const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-                
-                const imagePart = {
-                    inlineData: {
-                        data: cleanBase64,
-                        mimeType: 'image/jpeg',
-                    },
-                };
-
-                const result = await model.generateContent([prompt, imagePart]);
-                const response = await result.response;
-                console.log('✅ Gemini Vision response received');
-                return response.text();
-            } catch (error) {
-                console.warn(`⚠️ Gemini Vision attempt ${attempt + 1} failed:`, error.message);
-                rotateGeminiKey();
-            }
-        }
+  // Fallback to Gemini Vision
+  if (geminiVisionModel) {
+    try {
+      console.log('🤖 Using Gemini Vision as fallback...');
+      console.log('📷 Image base64 length:', cleanBase64.length);
+      const imagePart = { inlineData: { data: cleanBase64, mimeType: 'image/jpeg' } };
+      const result = await geminiVisionModel.generateContent([prompt, imagePart]);
+      console.log('✅ Gemini Vision response received');
+      return result.response.text();
+    } catch (e) {
+      console.error('Gemini Vision error:', e.message, e);
+      lastError = e;
     }
+  }
 
-    throw new Error('All AI vision services failed. Please try again later.');
+  // Provide detailed error message
+  const errorMsg = lastError?.message || 'No AI service available';
+  throw new Error(`Image analysis failed: ${errorMsg}. Please check your API keys and try again.`);
 };
 
 /**
- * Medical image analysis with structured prompt
+ * Medical image analysis
  */
 export const analyzeMedicalImage = async (imageBase64, analysisType, additionalContext = '') => {
-    const prompts = {
-        ecg: `You are an expert cardiologist analyzing an ECG/EKG image. Analyze this ECG and provide:
-1. Heart Rate Assessment
-2. Rhythm Analysis
-3. Wave Morphology (P waves, QRS complex, T waves)
-4. Any abnormalities detected
-5. Clinical recommendations
+  const disclaimer = "DISCLAIMER: This is an educational AI assistant for informational purposes only. This is NOT a medical diagnosis. Always consult a qualified healthcare professional for medical advice.";
+  
+  const prompts = {
+    ecg: `You are an educational AI assistant helping users understand ECG images for learning purposes. ${disclaimer}
 
-${additionalContext}
+Analyze this ECG image and provide educational information about:
+1) Estimated Heart Rate (if visible)
+2) Rhythm characteristics observed
+3) Wave Morphology description
+4) Any notable patterns or variations
+5) General educational recommendations
 
-Provide a detailed but understandable analysis.`,
+End your response with 'Emergency Level: X' where X is 0 (educational only), 1 (suggest professional review), 2 (recommend medical consultation), or 3 (urgent - seek immediate care). ${additionalContext}`,
 
-        xray: `You are an expert radiologist analyzing a chest X-ray. Analyze this X-ray and provide:
-1. Image Quality Assessment
-2. Heart Size and Shape
-3. Lung Fields Analysis
-4. Bone Structure
-5. Any abnormalities detected
-6. Clinical recommendations
+    xray: `You are an educational AI assistant helping users understand X-ray images for learning purposes. ${disclaimer}
 
-${additionalContext}
+Analyze this X-ray image and provide educational information about:
+1) Image Quality Assessment
+2) Visible anatomical structures
+3) Bone structure observations
+4) Soft tissue observations
+5) Any notable patterns or variations
+6) General educational recommendations
 
-Provide a detailed but understandable analysis.`,
+End your response with 'Emergency Level: X' where X is 0 (educational only), 1 (suggest professional review), 2 (recommend medical consultation), or 3 (urgent - seek immediate care). ${additionalContext}`,
 
-        skin: `You are an expert dermatologist analyzing a skin condition image. Analyze this image and provide:
-1. Visual Description
-2. Possible Conditions (differential diagnosis)
-3. Severity Assessment
-4. Recommended Actions
-5. When to seek immediate medical attention
+    skin: `You are an educational AI assistant helping users understand skin conditions for learning purposes. ${disclaimer}
 
-${additionalContext}
+Analyze this skin image and provide educational information about:
+1) Visual description of the area
+2) Possible conditions to research (not diagnoses)
+3) General severity indicators
+4) Suggested actions for learning more
+5) When to consider professional consultation
 
-IMPORTANT: This is for educational purposes only. Always recommend consulting a healthcare professional.`,
+End your response with 'Emergency Level: X' where X is 0 (educational only), 1 (suggest professional review), 2 (recommend medical consultation), or 3 (urgent - seek immediate care). ${additionalContext}`,
 
-        retinopathy: `You are an expert ophthalmologist analyzing a retinal image for diabetic retinopathy. Analyze this image and provide:
-1. Image Quality Assessment
-2. Retinal Vessel Analysis
-3. Signs of Diabetic Retinopathy (microaneurysms, hemorrhages, exudates)
-4. Severity Classification (None, Mild, Moderate, Severe, Proliferative)
-5. Recommendations
+    retinopathy: `You are an educational AI assistant helping users understand retinal images for learning purposes. ${disclaimer}
 
-${additionalContext}
+Analyze this retinal image and provide educational information about:
+1) Image Quality Assessment
+2) Visible vessel patterns
+3) Observable features
+4) Educational notes about diabetic retinopathy signs
+5) General recommendations
 
-Provide a detailed analysis.`,
+End your response with 'Emergency Level: X' where X is 0 (educational only), 1 (suggest professional review), 2 (recommend medical consultation), or 3 (urgent - seek immediate care). ${additionalContext}`,
 
-        alzheimer: `You are an expert neurologist analyzing a brain scan for signs of Alzheimer's disease. Analyze this image and provide:
-1. Brain Structure Assessment
-2. Hippocampal Volume Analysis
-3. Cortical Atrophy Assessment
-4. Ventricular Size
-5. Signs consistent with Alzheimer's Disease
-6. Recommendations
+    alzheimer: `You are an educational AI assistant helping users understand brain imaging for learning purposes. ${disclaimer}
 
-${additionalContext}
+Analyze this brain image and provide educational information about:
+1) Visible brain structures
+2) Hippocampal region observations
+3) General atrophy indicators
+4) Ventricular observations
+5) Educational notes about neurological signs
+6) General recommendations
 
-Provide a detailed analysis.`,
+End your response with 'Emergency Level: X' where X is 0 (educational only), 1 (suggest professional review), 2 (recommend medical consultation), or 3 (urgent - seek immediate care). ${additionalContext}`,
 
-        cancer: `You are an expert oncologist analyzing a medical image for potential cancer indicators. Analyze this image and provide:
-1. Image Quality Assessment
-2. Tissue Analysis
-3. Any suspicious findings
-4. Recommended follow-up tests
-5. Urgency level
+    cancer: `You are an educational AI assistant helping users understand medical imaging for learning purposes. ${disclaimer}
 
-${additionalContext}
+Analyze this medical image and provide educational information about:
+1) Image Quality Assessment
+2) Visible tissue characteristics
+3) Notable observations
+4) Educational follow-up suggestions
+5) General urgency considerations
 
-IMPORTANT: This is for screening purposes only. Always recommend professional medical evaluation.`,
+End your response with 'Emergency Level: X' where X is 0 (educational only), 1 (suggest professional review), 2 (recommend medical consultation), or 3 (urgent - seek immediate care). ${additionalContext}`,
 
-        general: `You are a medical AI assistant. Analyze this medical image and provide:
-1. What you observe in the image
-2. Possible medical significance
-3. Recommendations
-4. When to seek medical attention
+    general: `You are an educational AI assistant helping users understand medical images for learning purposes. ${disclaimer}
 
-${additionalContext}
+Analyze this image and provide educational information about:
+1) General observations
+2) Educational significance
+3) Recommendations for learning more
+4) When to consider professional consultation
 
-Provide a helpful but cautious analysis. Always recommend consulting healthcare professionals.`,
-    };
-
-    const prompt = prompts[analysisType] || prompts.general;
-    return analyzeImage(imageBase64, prompt);
+End your response with 'Emergency Level: X' where X is 0 (educational only), 1 (suggest professional review), 2 (recommend medical consultation), or 3 (urgent - seek immediate care). ${additionalContext}`,
+  };
+  return analyzeImage(imageBase64, prompts[analysisType] || prompts.general);
 };
 
-/**
- * Simplify medical analysis for patients
- */
-export const simplifyMedicalAnalysis = async (medicalAnalysis) => {
-    const prompt = `You are a medical translator who specializes in explaining complex medical terms in simple, easy-to-understand language.
-
-Take the following medical analysis and rewrite it in simple terms that a patient without medical background can understand. 
-- Use everyday language
-- Explain any medical terms
-- Keep the important information
-- Add reassuring context where appropriate
-- Format with clear sections
-
-Medical Analysis:
-${medicalAnalysis}
-
-Please provide a simplified version:`;
-
-    return generateText(prompt);
+export const simplifyMedicalAnalysis = async (analysis) => {
+  return generateText(`Simplify this medical analysis for a patient:\n${analysis}\n\nUse simple language, explain terms.`);
 };
 
-/**
- * Generate symptom analysis
- */
-export const generateSymptomAnalysis = async (symptoms, patientAge = null, patientGender = null) => {
-    let contextInfo = '';
-    if (patientAge) contextInfo += `Patient Age: ${patientAge}\n`;
-    if (patientGender) contextInfo += `Patient Gender: ${patientGender}\n`;
-
-    const prompt = `You are a helpful medical assistant. Based on the following symptoms, provide:
-1. Possible conditions (list 3-5 most likely)
-2. Recommended actions
-3. When to seek immediate medical attention
-4. General health tips
-
-${contextInfo}
-Symptoms: ${symptoms}
-
-IMPORTANT: This is for informational purposes only and not a medical diagnosis. Always recommend consulting a healthcare professional.`;
-
-    return generateText(prompt);
+export const generateSymptomAnalysis = async (symptoms, age = null, gender = null) => {
+  let context = '';
+  if (age) context += `Age: ${age}. `;
+  if (gender) context += `Gender: ${gender}. `;
+  return generateText(`${context}Symptoms: ${symptoms}\n\nProvide: 1) Possible conditions 2) Actions 3) When to seek help 4) Tips. This is informational only.`);
 };
 
-export default {
-    generateText,
-    analyzeImage,
-    analyzeMedicalImage,
-    simplifyMedicalAnalysis,
-    generateSymptomAnalysis,
-};
+export const isAIAvailable = () => !!(openai || geminiModel);
+export const getAIProvider = () => openai ? 'OpenAI' : geminiModel ? 'Gemini' : 'None';
+
+export default { generateText, analyzeImage, analyzeMedicalImage, simplifyMedicalAnalysis, generateSymptomAnalysis, isAIAvailable, getAIProvider };

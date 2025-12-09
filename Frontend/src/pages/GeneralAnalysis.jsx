@@ -1,24 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { Upload, MessageSquare, Image, Download, RefreshCw, Sparkles, Camera, X, Play, Square } from "lucide-react";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { analyzeImage as aiAnalyzeImage, simplifyMedicalAnalysis } from "../utils/aiService";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import AnalysisResults from '../components/AnalysisResults';
 import jsPDF from 'jspdf';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-
-// Initialize Gemini AI with fallback keys
-const API_KEYS = [
-    "AIzaSyAerBoGRKAl_AMK4uGDG1re1u86sNxa28o",
-    import.meta.env.VITE_GEMINI_API_KEY,
-    "AIzaSyBjhpEfKWZa5jNA6iV-Rs6qmMhCnbtrJA8",
-    import.meta.env.VITE_GEMINI_API_KEY_BACKUP,
-    "AIzaSyACJ3rdIqTTxzeQAm25_95nZEXNHo9PqtoI"
-].filter(Boolean); // Remove undefined keys
-
-let currentKeyIndex = 0;
-const genAI = new GoogleGenerativeAI(API_KEYS[currentKeyIndex]);
 
 const uploadToCloudinary = async (file) => {
     // Simulate upload delay
@@ -27,59 +15,20 @@ const uploadToCloudinary = async (file) => {
 };
 
 const simplifyAnalysis = async (medicalAnalysis) => {
-    const prompt = `You are a medical translator who specializes in explaining complex medical terms in simple, easy-to-understand language. 
-    Please convert this medical analysis into simple terms that someone without a medical background can understand.
-    Keep the same structure but use everyday language. Here's the analysis:
-
-    ${medicalAnalysis}
-
-    Please provide the simplified version while maintaining the key information.`;
-    
     try {
-        const currentGenAI = new GoogleGenerativeAI(API_KEYS[currentKeyIndex]);
-        const model = currentGenAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        return response.text();
+        return await simplifyMedicalAnalysis(medicalAnalysis);
     } catch (error) {
         console.error("Error simplifying analysis:", error);
-        
-        // If quota error, try next key
-        if (error.message?.includes('quota') || error.message?.includes('RATE_LIMIT_EXCEEDED') || error.message?.includes('429')) {
-            const previousKeyIndex = currentKeyIndex;
-            currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
-            
-            if (currentKeyIndex !== previousKeyIndex && API_KEYS.length > 1) {
-                // Retry with next key
-                console.log(`Simplify: Retrying with API key ${currentKeyIndex + 1}/${API_KEYS.length}...`);
-                try {
-                    const newGenAI = new GoogleGenerativeAI(API_KEYS[currentKeyIndex]);
-                    const model = newGenAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-                    const result = await model.generateContent(prompt);
-                    const response = await result.response;
-                    return response.text();
-                } catch (retryError) {
-                    console.error("Simplify retry failed:", retryError);
-                    throw new Error("Failed to simplify the analysis. API quota exceeded. Please try again in 1-2 minutes.");
-                }
-            }
-        }
-        
         throw new Error(`Failed to simplify the analysis: ${error.message || 'Unknown error'}`);
     }
 };
 
 const analyzeImage = async (imageUrl, problemDescription = '') => {
-    // Declare variables outside try block for retry access
-    let base64Image;
-    let prompt;
-    
     try {
         // Convert image to base64
         const imageResponse = await fetch(imageUrl);
         const blob = await imageResponse.blob();
-        base64Image = await new Promise((resolve, reject) => {
+        const base64Image = await new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(blob);
             reader.onloadend = () => resolve(reader.result.split(",")[1]);
@@ -93,7 +42,7 @@ const analyzeImage = async (imageUrl, problemDescription = '') => {
         );
 
         // Create the prompt with context
-        prompt = `You are an experienced general medical practitioner. Analyze this medical image and provide a detailed assessment. 
+        let prompt = `You are an experienced general medical practitioner. Analyze this medical image and provide a detailed assessment. 
         Focus on identifying any visible conditions, abnormalities, or concerns. 
         Structure your response in the following format:
         1. Medical Condition Detected (if any)
@@ -114,22 +63,8 @@ const analyzeImage = async (imageUrl, problemDescription = '') => {
             prompt += `\n\nPatient's Description: ${problemDescription}\n\nPlease consider this additional context in your analysis.`;
         }
 
-        // Get the model
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-        // Generate content
-        const result = await model.generateContent([
-            prompt,
-            {
-                inlineData: {
-                    mimeType: "image/jpeg",
-                    data: base64Image
-                }
-            }
-        ]);
-
-        const aiResponse = await result.response;
-        const text = aiResponse.text();
+        // Use OpenAI for analysis
+        const text = await aiAnalyzeImage(base64Image, prompt);
 
         // Extract emergency level
         const emergencyLevelMatch = text.match(/Emergency Level:\s*(\d)/i);
@@ -153,73 +88,7 @@ const analyzeImage = async (imageUrl, problemDescription = '') => {
         return { formattedResponse, emergencyLevel };
     } catch (error) {
         console.error("Error analyzing image:", error);
-        
-        // Check if it's a quota error
-        if (error.message?.includes('quota') || error.message?.includes('RATE_LIMIT_EXCEEDED') || error.message?.includes('429')) {
-            // Try next API key
-            const previousKeyIndex = currentKeyIndex;
-            currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
-            
-            if (currentKeyIndex === previousKeyIndex || API_KEYS.length === 1) {
-                // We've tried all keys or only have one key
-                throw new Error("API quota exceeded for all available keys. Please wait 1-2 minutes and try again.");
-            }
-            
-            // Retry with next key
-            console.log(`Retrying with API key ${currentKeyIndex + 1}/${API_KEYS.length}...`);
-            
-            try {
-                const newGenAI = new GoogleGenerativeAI(API_KEYS[currentKeyIndex]);
-                const model = newGenAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-                
-                // Retry the request
-                const result = await model.generateContent([
-                    prompt,
-                    {
-                        inlineData: {
-                            mimeType: "image/jpeg",
-                            data: base64Image
-                        }
-                    }
-                ]);
-                
-                const aiResponse = await result.response;
-                const text = aiResponse.text();
-                
-                // Extract emergency level
-                const emergencyLevelMatch = text.match(/Emergency Level:\s*(\d)/i);
-                let emergencyLevel = emergencyLevelMatch ? parseInt(emergencyLevelMatch[1]) : 0;
-                
-                // Check for emergency keywords again
-                const emergencyKeywords = ['severe', 'emergency', 'urgent', 'critical', 'acute', 'serious', 'life-threatening', 'extreme pain', 'unbearable', 'blood'];
-                const hasEmergencyKeywords = emergencyKeywords.some(keyword =>
-                    problemDescription.toLowerCase().includes(keyword.toLowerCase())
-                );
-                
-                if (hasEmergencyKeywords && emergencyLevel === 0) {
-                    emergencyLevel = 3;
-                }
-                
-                const formattedResponse = text.split('\n')
-                    .map(line => {
-                        if (line.match(/^(Emergency Level|Medical Condition|Confidence Score|Type|Affected Region|Recommendation|Additional Observations)/i)) {
-                            return `**${line}**`;
-                        }
-                        return line;
-                    })
-                    .join('\n');
-                
-                return { formattedResponse, emergencyLevel };
-            } catch (retryError) {
-                console.error("Retry also failed:", retryError);
-                if (retryError.message?.includes('quota') || retryError.message?.includes('RATE_LIMIT_EXCEEDED')) {
-                    throw new Error("API quota exceeded for all available keys. Please wait 1-2 minutes and try again.");
-                }
-                throw retryError;
-            }
-        }
-        
-        throw new Error(`Failed to analyze image: ${error.message || 'Unknown error'}`);
+        throw new Error(`Failed to analyze image: ${error.message || 'Unknown error'}. Please try again.`);
     }
 };
 
@@ -601,29 +470,39 @@ export default function GeneralAnalysis() {
                                 <h3 className="text-base sm:text-xl font-semibold text-gray-700 mb-1 sm:mb-2">Upload an image for analysis</h3>
                                 <p className="text-sm sm:text-base text-gray-500 mb-4 sm:mb-6">Click to browse, drag and drop, or use live camera</p>
 
+                                {/* Hidden file inputs */}
                                 <input
                                     type="file"
                                     ref={fileInputRef}
                                     onChange={handleImageChange}
                                     accept="image/*"
                                     className="hidden"
+                                    id="file-upload"
+                                />
+                                <input
+                                    type="file"
+                                    onChange={handleImageChange}
+                                    accept="image/*"
+                                    capture="environment"
+                                    className="hidden"
+                                    id="camera-capture"
                                 />
 
                                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-                                    <button
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="px-4 py-2 sm:px-6 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+                                    <label
+                                        htmlFor="file-upload"
+                                        className="px-4 py-2 sm:px-6 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base cursor-pointer"
                                     >
                                         <Upload className="w-4 h-4" />
                                         Browse Files
-                                    </button>
-                                    <button
-                                        onClick={startLiveCamera}
-                                        className="px-4 py-2 sm:px-6 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+                                    </label>
+                                    <label
+                                        htmlFor="camera-capture"
+                                        className="px-4 py-2 sm:px-6 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base cursor-pointer"
                                     >
                                         <Camera className="w-4 h-4" />
-                                        Go Live
-                                    </button>
+                                        Take Photo
+                                    </label>
                                 </div>
                             </div>
                         ) : (

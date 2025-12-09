@@ -1,8 +1,16 @@
 import axios from 'axios';
+import OpenAI from 'openai';
 
 // Cloudinary configuration (use env variables with fallbacks)
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'drxliiejo';
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'sachin';
+
+// Initialize OpenAI
+const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
+const openai = OPENAI_API_KEY ? new OpenAI({
+    apiKey: OPENAI_API_KEY,
+    dangerouslyAllowBrowser: true
+}) : null;
 
 console.log('Cloudinary Config:', { 
   cloudName: CLOUDINARY_CLOUD_NAME, 
@@ -112,147 +120,85 @@ const uploadImageToCloudinary = async (imageBlob) => {
   }
 };
 
-// API key rotation for handling quota limits
-const API_KEYS = [
-  "AIzaSyBjhpEfKWZa5jNA6iV-Rs6qmMhCnbtrJA8",
-  "AIzaSyAerBoGRKAl_AMK4uGDG1re1u86sNxa28o",
-  "AIzaSyCZ6peDBhq_ZPkNeBSFTVt-CWldGATimbg"
-].filter(Boolean);
-
-let currentKeyIndex = 0;
-
 /**
- * Analyzes an image using Gemini 1.5 Flash AI
+ * Analyzes an image using OpenAI GPT-4 Vision
  * @param {string} imageUrl - The Cloudinary URL of the image (or data URL)
  * @param {string} analysisType - The type of analysis (xray, skin, retinopathy, etc.)
  * @param {string} base64Image - Optional base64 image data to avoid fetching from URL
  * @returns {Promise<string>} - The analysis result
  */
 export const analyzeImageWithGemini = async (imageUrl, analysisType, base64Image = null) => {
-  const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent";
-  
-  const makeRequest = async (apiKey) => {
-    try {
-    
-    // Define analysis prompts based on type
-    const prompts = {
-      xray: "You are an expert radiologist specializing in X-ray analysis. Analyze this X-ray image for signs of abnormalities, fractures, infections, or other conditions. Focus on bone structure, joint alignment, and any unusual patterns. Assess the severity and progression of any detected conditions. Provide detailed findings and recommendations. IMPORTANT: At the end of your analysis, include exactly one of these emergency levels: 'Emergency Level: 1' (beginner level - minor issues, routine care), 'Emergency Level: 2' (intermediate level - moderate concerns, prompt attention needed), 'Emergency Level: 3' (high level - serious conditions, immediate attention required), or 'Emergency Level: 0' (no emergency - normal findings).",
-      skin: "You are an expert dermatologist specializing in skin condition analysis. Analyze this skin image for any dermatological conditions, lesions, moles, rashes, or abnormalities. Look for signs of skin cancer, infections, or other skin disorders. Assess the characteristics, size, color, and texture of any findings. Provide detailed analysis and recommendations. IMPORTANT: At the end of your analysis, include exactly one of these emergency levels: 'Emergency Level: 1' (beginner level - minor issues, routine care), 'Emergency Level: 2' (intermediate level - moderate concerns, prompt attention needed), 'Emergency Level: 3' (high level - serious conditions, immediate attention required), or 'Emergency Level: 0' (no emergency - normal findings).",
-      retinopathy: "You are an expert ophthalmologist specializing in retinal analysis. Analyze this retinal image for signs of diabetic retinopathy, macular degeneration, or other eye conditions. Look for microaneurysms, hemorrhages, exudates, or other abnormalities. Assess the severity and provide detailed findings and recommendations. IMPORTANT: At the end of your analysis, include exactly one of these emergency levels: 'Emergency Level: 1' (beginner level - minor issues, routine care), 'Emergency Level: 2' (intermediate level - moderate concerns, prompt attention needed), 'Emergency Level: 3' (high level - serious conditions, immediate attention required), or 'Emergency Level: 0' (no emergency - normal findings).",
-      ecg: "You are an expert cardiologist specializing in ECG analysis. Analyze this ECG/EKG image for any cardiac abnormalities, arrhythmias, or other heart conditions. Look for irregular rhythms, ST segment changes, or other concerning patterns. Provide detailed analysis and recommendations. IMPORTANT: At the end of your analysis, include exactly one of these emergency levels: 'Emergency Level: 1' (beginner level - minor issues, routine care), 'Emergency Level: 2' (intermediate level - moderate concerns, prompt attention needed), 'Emergency Level: 3' (high level - serious conditions, immediate attention required), or 'Emergency Level: 0' (no emergency - normal findings).",
-      cancer: "You are an expert oncologist specializing in cancer detection. Analyze this medical image for any signs of cancer, tumors, or malignant growths. Look for suspicious masses, irregular shapes, or other concerning features. Assess the characteristics and provide detailed analysis and recommendations. IMPORTANT: At the end of your analysis, include exactly one of these emergency levels: 'Emergency Level: 1' (beginner level - minor issues, routine care), 'Emergency Level: 2' (intermediate level - moderate concerns, prompt attention needed), 'Emergency Level: 3' (high level - serious conditions, immediate attention required), or 'Emergency Level: 0' (no emergency - normal findings).",
-      alzheimer: "You are an expert neurologist specializing in brain scan analysis. Analyze this brain scan or medical image for signs of Alzheimer's disease, dementia, or other neurological conditions. Look for brain atrophy, abnormal patterns, or other concerning features. Provide detailed analysis and recommendations. IMPORTANT: At the end of your analysis, include exactly one of these emergency levels: 'Emergency Level: 1' (beginner level - minor issues, routine care), 'Emergency Level: 2' (intermediate level - moderate concerns, prompt attention needed), 'Emergency Level: 3' (high level - serious conditions, immediate attention required), or 'Emergency Level: 0' (no emergency - normal findings)."
-    };
-    
-    const prompt = prompts[analysisType] || prompts.xray;
-    
-    // Use provided base64 or fetch from URL
-    let base64Data;
-    if (base64Image) {
-      console.log('Using provided base64 image data (avoiding CORS)');
-      base64Data = base64Image;
-    } else {
-      console.log('Fetching image from URL:', imageUrl);
-      base64Data = await fetchImageAsBase64(imageUrl);
-    }
-    
-    const requestBody = {
-      contents: [
-        {
-          parts: [
-            {
-              text: prompt
-            },
-            {
-              inline_data: {
-                mime_type: "image/jpeg",
-                data: base64Data
-              }
-            }
-          ]
-        }
-      ],
-      generationConfig: {
-        temperature: 0.4,
-        topK: 32,
-        topP: 1,
-        maxOutputTokens: 4096,
-      }
-    };
-    
-      console.log('Sending request to Gemini API...');
-      const response = await axios.post(
-        `${GEMINI_API_URL}?key=${apiKey}`,
-        requestBody,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          timeout: 60000, // 60 second timeout for AI analysis
-        }
-      );
-      
-      console.log('Received response from Gemini API');
-      
-      if (response.data && response.data.candidates && response.data.candidates[0]) {
-        return response.data.candidates[0].content.parts[0].text;
-      } else {
-        console.error('Invalid Gemini API response:', response.data);
-        throw new Error('Invalid response from Gemini API - no analysis generated');
-      }
-    } catch (error) {
-      console.error('Gemini API request error:', error.message);
-      
-      // Check if it's a quota/rate limit error
-      if (error.response?.status === 429 || 
-          error.response?.data?.error?.message?.includes('quota') ||
-          error.response?.data?.error?.message?.includes('RATE_LIMIT_EXCEEDED')) {
-        throw new Error('QUOTA_EXCEEDED');
-      }
-      
-      // Check for network errors
-      if (error.code === 'ECONNABORTED') {
-        throw new Error('AI analysis timeout: Request took too long. Please try again.');
-      } else if (error.message?.includes('Network Error')) {
-        throw new Error('Network error: Unable to connect to AI service. Please check your internet connection.');
-      } else if (error.response?.status === 400) {
-        throw new Error(`AI service error: ${error.response?.data?.error?.message || 'Invalid request'}`);
-      } else if (error.response?.status === 403) {
-        throw new Error('AI service authentication failed: Invalid API key');
-      }
-      
-      throw error;
-    }
-  };
+  if (!openai) {
+    throw new Error('OpenAI API key not configured. Please check your environment variables.');
+  }
 
-  // Try with current API key
+  // Define analysis prompts based on type
+  const prompts = {
+    xray: "You are an expert radiologist specializing in X-ray analysis. Analyze this X-ray image for signs of abnormalities, fractures, infections, or other conditions. Focus on bone structure, joint alignment, and any unusual patterns. Assess the severity and progression of any detected conditions. Provide detailed findings and recommendations. IMPORTANT: At the end of your analysis, include exactly one of these emergency levels: 'Emergency Level: 1' (beginner level - minor issues, routine care), 'Emergency Level: 2' (intermediate level - moderate concerns, prompt attention needed), 'Emergency Level: 3' (high level - serious conditions, immediate attention required), or 'Emergency Level: 0' (no emergency - normal findings).",
+    skin: "You are an expert dermatologist specializing in skin condition analysis. Analyze this skin image for any dermatological conditions, lesions, moles, rashes, or abnormalities. Look for signs of skin cancer, infections, or other skin disorders. Assess the characteristics, size, color, and texture of any findings. Provide detailed analysis and recommendations. IMPORTANT: At the end of your analysis, include exactly one of these emergency levels: 'Emergency Level: 1' (beginner level - minor issues, routine care), 'Emergency Level: 2' (intermediate level - moderate concerns, prompt attention needed), 'Emergency Level: 3' (high level - serious conditions, immediate attention required), or 'Emergency Level: 0' (no emergency - normal findings).",
+    retinopathy: "You are an expert ophthalmologist specializing in retinal analysis. Analyze this retinal image for signs of diabetic retinopathy, macular degeneration, or other eye conditions. Look for microaneurysms, hemorrhages, exudates, or other abnormalities. Assess the severity and provide detailed findings and recommendations. IMPORTANT: At the end of your analysis, include exactly one of these emergency levels: 'Emergency Level: 1' (beginner level - minor issues, routine care), 'Emergency Level: 2' (intermediate level - moderate concerns, prompt attention needed), 'Emergency Level: 3' (high level - serious conditions, immediate attention required), or 'Emergency Level: 0' (no emergency - normal findings).",
+    ecg: "You are an expert cardiologist specializing in ECG analysis. Analyze this ECG/EKG image for any cardiac abnormalities, arrhythmias, or other heart conditions. Look for irregular rhythms, ST segment changes, or other concerning patterns. Provide detailed analysis and recommendations. IMPORTANT: At the end of your analysis, include exactly one of these emergency levels: 'Emergency Level: 1' (beginner level - minor issues, routine care), 'Emergency Level: 2' (intermediate level - moderate concerns, prompt attention needed), 'Emergency Level: 3' (high level - serious conditions, immediate attention required), or 'Emergency Level: 0' (no emergency - normal findings).",
+    cancer: "You are an expert oncologist specializing in cancer detection. Analyze this medical image for any signs of cancer, tumors, or malignant growths. Look for suspicious masses, irregular shapes, or other concerning features. Assess the characteristics and provide detailed analysis and recommendations. IMPORTANT: At the end of your analysis, include exactly one of these emergency levels: 'Emergency Level: 1' (beginner level - minor issues, routine care), 'Emergency Level: 2' (intermediate level - moderate concerns, prompt attention needed), 'Emergency Level: 3' (high level - serious conditions, immediate attention required), or 'Emergency Level: 0' (no emergency - normal findings).",
+    alzheimer: "You are an expert neurologist specializing in brain scan analysis. Analyze this brain scan or medical image for signs of Alzheimer's disease, dementia, or other neurological conditions. Look for brain atrophy, abnormal patterns, or other concerning features. Provide detailed analysis and recommendations. IMPORTANT: At the end of your analysis, include exactly one of these emergency levels: 'Emergency Level: 1' (beginner level - minor issues, routine care), 'Emergency Level: 2' (intermediate level - moderate concerns, prompt attention needed), 'Emergency Level: 3' (high level - serious conditions, immediate attention required), or 'Emergency Level: 0' (no emergency - normal findings)."
+  };
+  
+  const prompt = prompts[analysisType] || prompts.xray;
+  
   try {
-    return await makeRequest(API_KEYS[currentKeyIndex]);
-  } catch (error) {
-    console.error('Error analyzing image with Gemini (attempt 1):', error.message);
+    console.log('🤖 Analyzing image with OpenAI Vision...');
     
-    // If quota exceeded, try next key
-    if (error.message === 'QUOTA_EXCEEDED' && API_KEYS.length > 1) {
-      currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
-      console.log(`Switching to API key ${currentKeyIndex + 1}/${API_KEYS.length}`);
-      
-      try {
-        return await makeRequest(API_KEYS[currentKeyIndex]);
-      } catch (retryError) {
-        console.error('Error analyzing image with Gemini (attempt 2):', retryError.message);
-        
-        // Try one more key if available
-        if (retryError.message === 'QUOTA_EXCEEDED' && API_KEYS.length > 2) {
-          currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
-          console.log(`Switching to API key ${currentKeyIndex + 1}/${API_KEYS.length}`);
-          return await makeRequest(API_KEYS[currentKeyIndex]);
-        }
-        
-        throw new Error(`Failed to analyze image: ${retryError.response?.data?.error?.message || retryError.message}`);
-      }
+    // Prepare image URL for OpenAI
+    let imageUrlForApi;
+    if (base64Image) {
+      imageUrlForApi = `data:image/jpeg;base64,${base64Image}`;
+    } else if (imageUrl.startsWith('data:')) {
+      imageUrlForApi = imageUrl;
+    } else {
+      // For external URLs, we need to fetch and convert to base64
+      const base64Data = await fetchImageAsBase64(imageUrl);
+      imageUrlForApi = `data:image/jpeg;base64,${base64Data}`;
     }
     
-    throw new Error(`Failed to analyze image: ${error.response?.data?.error?.message || error.message}`);
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageUrlForApi,
+              },
+            },
+          ],
+        },
+      ],
+      max_tokens: 4096,
+    });
+
+    console.log('✅ OpenAI Vision response received');
+    
+    if (response?.choices?.[0]?.message?.content) {
+      return response.choices[0].message.content;
+    } else {
+      throw new Error('Invalid response from OpenAI - no analysis generated');
+    }
+  } catch (error) {
+    console.error('OpenAI Vision API error:', error.message);
+    
+    if (error.message?.includes('rate limit') || error.status === 429) {
+      throw new Error('AI service rate limit exceeded. Please try again in a few minutes.');
+    } else if (error.message?.includes('Network Error')) {
+      throw new Error('Network error: Unable to connect to AI service. Please check your internet connection.');
+    } else if (error.status === 400) {
+      throw new Error(`AI service error: ${error.message || 'Invalid request'}`);
+    } else if (error.status === 401 || error.status === 403) {
+      throw new Error('AI service authentication failed: Invalid API key');
+    }
+    
+    throw new Error(`Failed to analyze image: ${error.message}`);
   }
 };
 
@@ -301,8 +247,9 @@ const fetchImageAsBase64 = async (imageUrl) => {
   }
 };
 
+
 /**
- * Complete video analysis workflow: capture snapshot, upload to Cloudinary, and analyze with Gemini
+ * Complete video analysis workflow: capture snapshot, upload to Cloudinary, and analyze with OpenAI
  * @param {File} videoFile - The video file to analyze
  * @param {string} analysisType - The type of analysis
  * @param {number} timeOffset - Time in seconds to capture snapshot (default: 2)
@@ -335,8 +282,8 @@ export const analyzeVideoWithSnapshot = async (videoFile, analysisType, timeOffs
       imageUrl = dataUrl; // Use data URL as fallback
     }
     
-    // Step 3: Analyze image with Gemini AI (using base64 directly to avoid CORS)
-    console.log('Step 3: Analyzing image with Gemini AI...');
+    // Step 3: Analyze image with OpenAI Vision
+    console.log('Step 3: Analyzing image with OpenAI Vision...');
     const analysis = await analyzeImageWithGemini(imageUrl, analysisType, base64Image);
     console.log('✓ Analysis completed successfully');
     
@@ -352,8 +299,8 @@ export const analyzeVideoWithSnapshot = async (videoFile, analysisType, timeOffs
       throw new Error('Failed to upload image to cloud storage. Please check your internet connection and try again.');
     } else if (error.message?.includes('video') || error.message?.includes('snapshot')) {
       throw new Error('Failed to process video file. Please ensure the video is valid and try again.');
-    } else if (error.message?.includes('quota') || error.message?.includes('RATE_LIMIT')) {
-      throw new Error('AI service quota exceeded. Please try again in a few minutes.');
+    } else if (error.message?.includes('rate limit') || error.message?.includes('RATE_LIMIT')) {
+      throw new Error('AI service rate limit exceeded. Please try again in a few minutes.');
     } else if (error.message?.includes('Network')) {
       throw new Error(`Network error: ${error.message}. Please check your internet connection.`);
     } else if (error.message?.includes('CORS')) {

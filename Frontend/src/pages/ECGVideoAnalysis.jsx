@@ -6,23 +6,10 @@ import 'jspdf-autotable';
 import { useSelector, useDispatch } from 'react-redux';
 import { addMedicalHistory } from '../actions/userActions';
 import Disclaimer from '../components/Disclaimer';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { simplifyMedicalAnalysis } from '../utils/aiService';
 import AnalysisResults from '../components/AnalysisResults';
 import { useNavigate } from 'react-router-dom';
 import { analyzeVideoWithSnapshot } from '../utils/videoSnapshot';
-
-// Initialize Gemini AI with fallback keys
-const API_KEYS = [
-    "AIzaSyCZ6peDBhq_ZPkNeBSFTVt-CWldGATimbg",
-    import.meta.env.VITE_GEMINI_API_KEY,
-    "AIzaSyAerBoGRKAl_AMK4uGDG1re1u86sNxa28o",
-    "AIzaSyBjhpEfKWZa5jNA6iV-Rs6qmMhCnbtrJA8",
-    import.meta.env.VITE_GEMINI_API_KEY_BACKUP,
-    "AIzaSyACJ3rdIqTTxzeQAm25_95nZEXNHo9PqtoI"
-].filter(Boolean);
-
-let currentKeyIndex = 0;
-const genAI = new GoogleGenerativeAI(API_KEYS[currentKeyIndex]);
 
 function ECGVideoAnalysis() {
     const dispatch = useDispatch();
@@ -290,51 +277,17 @@ function ECGVideoAnalysis() {
 
     const simplifyAnalysis = async (medicalAnalysis) => {
         try {
-            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-            
-            const prompt = `You are a medical translator who specializes in explaining complex medical terms in simple, easy-to-understand language. 
-            Please convert this medical analysis into simple terms that someone without a medical background can understand.
-            Keep the same structure but use everyday language. Here's the analysis:
-
-            ${medicalAnalysis}
-
-            Please provide the simplified version while maintaining the key information.`;
-
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            return response.text();
+            return await simplifyMedicalAnalysis(medicalAnalysis);
         } catch (error) {
             console.error("Error simplifying analysis:", error);
             throw new Error("Failed to simplify the analysis. Please try again.");
         }
     };
 
-    const analyzeImage = async (imageUrl) => {
-        try {
-            // Fetch image and convert to Base64
-            const response = await fetch(imageUrl);
-            const blob = await response.blob();
-
-            const base64Image = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(blob);
-                reader.onloadend = () => resolve(reader.result.split(",")[1]); 
-                reader.onerror = reject;
-            });
-
-            const result = await genAI.models.generateContent({
-                model: "gemini-2.0-flash",
-                contents: [
-                    { role: "user", parts: [{ text: "You are an expert cardiologist specializing in ECG analysis. Analyze the provided ECG image and provide a detailed analysis. Include the heart condition detected, confidence score, affected region, and recommendations. Use user-friendly language." }] },
-                    { role: "user", parts: [{ inlineData: { mimeType: "image/png", data: base64Image } }] }
-                ],
-            });
-
-            return result.text();
-        } catch (error) {
-            console.error("Error analyzing image:", error);
-            throw error;
-        }
+    // Note: analyzeImage is not used directly - video analysis uses analyzeVideoWithSnapshot
+    const analyzeImage = async () => {
+        // This function is kept for compatibility but video analysis uses analyzeVideoWithSnapshot
+        return null;
     };
 
     const handleSimplify = async () => {

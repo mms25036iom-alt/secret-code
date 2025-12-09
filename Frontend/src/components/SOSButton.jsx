@@ -7,7 +7,6 @@ import {
     Ambulance, 
     Heart, 
     Shield, 
-    Clock,
     Navigation,
     PhoneCall,
     Loader2,
@@ -200,11 +199,17 @@ const SOSButton = () => {
 
     return (
         <>
-            {/* Floating SOS Button */}
+            {/* Floating SOS Button - Positioned above Arogya AI button */}
             <button
                 onClick={() => setShowModal(true)}
-                className="fixed bottom-24 right-4 z-50 group"
+                className="fixed bottom-28 right-4 z-[9998] group sm:bottom-24"
                 aria-label="Emergency SOS"
+                style={{
+                    position: 'fixed',
+                    bottom: '112px',
+                    right: '16px',
+                    zIndex: 9998
+                }}
             >
                 <div className="relative">
                     {/* Pulse rings */}
@@ -212,8 +217,14 @@ const SOSButton = () => {
                     <div className="absolute inset-0 rounded-full bg-red-500 animate-pulse opacity-50"></div>
                     
                     {/* Main button */}
-                    <div className="relative w-16 h-16 bg-gradient-to-br from-red-500 to-red-700 rounded-full shadow-lg flex items-center justify-center transform transition-all duration-300 group-hover:scale-110 group-active:scale-95">
-                        <span className="text-white font-bold text-lg">SOS</span>
+                    <div className="relative w-14 h-14 bg-gradient-to-br from-red-500 to-red-700 rounded-full shadow-lg flex items-center justify-center transform transition-all duration-300 group-hover:scale-110 group-active:scale-95 border-2 border-red-400">
+                        <span className="text-white font-bold text-sm">SOS</span>
+                    </div>
+                    
+                    {/* Label tooltip */}
+                    <div className="absolute right-full mr-2 top-1/2 transform -translate-y-1/2 bg-red-600 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap shadow-lg">
+                        Emergency SOS
+                        <div className="absolute left-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-l-red-600"></div>
                     </div>
                 </div>
             </button>

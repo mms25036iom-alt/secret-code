@@ -40,6 +40,13 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+    
+    // ZegoCloud Call SDK for 1-on-1 video calls
+    // Using latest version from JitPack - check https://jitpack.io/#ZEGOCLOUD/zego_uikit_prebuilt_call_android
+    implementation 'com.github.ZEGOCLOUD:zego_uikit_prebuilt_call_android:+'
+    
+    // PermissionX for runtime permission handling
+    implementation 'com.guolindev.permissionx:permissionx:1.7.1'
 }
 
 apply from: 'capacitor.build.gradle'
