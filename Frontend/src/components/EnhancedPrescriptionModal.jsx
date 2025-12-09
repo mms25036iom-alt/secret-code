@@ -3,6 +3,7 @@ import { X, Plus, Trash2, FileText, Mic, MicOff, Play, Pause, Volume2 } from 'lu
 import { useDispatch, useSelector } from 'react-redux';
 import { createPrescription } from '../actions/prescriptionActions';
 import { toast } from 'react-toastify';
+import axios from '../axios';
 
 // Common symptoms list
 const COMMON_SYMPTOMS = [
@@ -36,6 +37,7 @@ const EnhancedPrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, 
   const [formData, setFormData] = useState({
     patientId: patientId || '',
     patientName: patientName || '',
+    pharmacyId: '',
     diagnosis: '',
     diagnosisAudio: null,
     symptoms: [],
@@ -52,8 +54,10 @@ const EnhancedPrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, 
 
   const [patients, setPatients] = useState([]);
   const [medicines, setMedicines] = useState([]);
+  const [pharmacies, setPharmacies] = useState([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
   const [loadingMedicines, setLoadingMedicines] = useState(false);
+  const [loadingPharmacies, setLoadingPharmacies] = useState(false);
   
   // Audio recording states
   const [isRecordingDiagnosis, setIsRecordingDiagnosis] = useState(false);
@@ -76,6 +80,7 @@ const EnhancedPrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, 
         fetchPatients();
       }
       fetchMedicines();
+      fetchPharmacies();
       
       if (patientId && patientName) {
         setFormData(prev => ({
@@ -104,31 +109,90 @@ const EnhancedPrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, 
   const fetchPatients = async () => {
     setLoadingPatients(true);
     try {
-      const response = await fetch('/api/v1/appointment/my', {
-        credentials: 'include'
-      });
-      const data = await response.json();
+      const response = await axios.get('/appointment/my');
+      const data = response.data;
+      
+      console.log('📋 Fetched appointments response:', data);
+      console.log('📋 Total appointments:', data.appointments?.length);
       
       if (data.success && Array.isArray(data.appointments)) {
         const uniquePatients = [];
         const patientIds = new Set();
         
-        data.appointments.forEach(apt => {
-          if (apt.patient && apt.patient.id && !patientIds.has(apt.patient.id)) {
-            patientIds.add(apt.patient.id);
+        // Log all appointment statuses for debugging
+        console.log('📊 Appointment statuses:', data.appointments.map(apt => ({
+          id: apt._id,
+          status: apt.status,
+          hasPatient: !!apt.patient,
+          patientName: apt.patient?.name
+        })));
+        
+        // Include completed, confirmed, and even pending appointments
+        // Doctors should be able to prescribe for any appointment they've had
+        const validAppointments = data.appointments.filter(apt => 
+          apt.status === 'completed' || apt.status === 'confirmed' || apt.status === 'pending'
+        );
+        
+        console.log(`✅ Found ${validAppointments.length} valid appointments (completed/confirmed/pending)`);
+        
+        validAppointments.forEach(apt => {
+          // Ensure patient object exists and has required fields
+          if (!apt.patient) {
+            console.warn('⚠️ Appointment missing patient data:', apt._id);
+            return;
+          }
+          
+          // Handle both formats: apt.patient.id and apt.patient._id
+          const patientId = apt.patient._id || apt.patient.id;
+          const patientName = apt.patient.name;
+          const patientContact = apt.patient.contact;
+          
+          console.log('🔍 Processing patient:', { patientId, patientName, patientContact });
+          
+          if (patientId && patientName && !patientIds.has(patientId.toString())) {
+            patientIds.add(patientId.toString());
             uniquePatients.push({
-              id: apt.patient.id,
-              name: apt.patient.name,
-              contact: apt.patient.contact
+              id: patientId,
+              name: patientName,
+              contact: patientContact || 'N/A'
             });
           }
         });
         
+        console.log(`👥 Unique patients found: ${uniquePatients.length}`);
+        console.log('📝 Patient list:', uniquePatients);
         setPatients(uniquePatients);
+        
+        if (uniquePatients.length === 0) {
+          console.error('❌ No patients found! Check if appointments have patient data populated.');
+          toast.error('No patients found. Please ensure appointments are properly created with patient information.');
+        } else {
+          toast.success(`Found ${uniquePatients.length} patient(s)`);
+        }
+      } else {
+        console.error('❌ Invalid response format:', data);
+        toast.error('Failed to load patients - invalid response format');
       }
     } catch (error) {
-      console.error('Error fetching patients:', error);
-      toast.error('Failed to load patients');
+      console.error('❌ Error fetching patients:', error);
+      
+      if (error.response?.status === 401) {
+        console.error('🔒 Authentication error - User not logged in or token expired');
+        toast.error('Authentication error. Please log in again.');
+        
+        // Check if token exists
+        const token = localStorage.getItem('token');
+        console.log('🔑 Token in localStorage:', token ? 'Present' : 'Missing');
+        
+        if (!token) {
+          toast.error('No authentication token found. Redirecting to login...');
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 2000);
+        }
+      } else {
+        toast.error(`Failed to load patients: ${error.response?.data?.message || error.message}`);
+      }
     } finally {
       setLoadingPatients(false);
     }
@@ -137,10 +201,8 @@ const EnhancedPrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, 
   const fetchMedicines = async () => {
     setLoadingMedicines(true);
     try {
-      const response = await fetch('/api/v1/medicines', {
-        credentials: 'include'
-      });
-      const data = await response.json();
+      const response = await axios.get('/medicines');
+      const data = response.data;
       
       if (data.success && Array.isArray(data.medicines)) {
         setMedicines(data.medicines);
@@ -150,6 +212,26 @@ const EnhancedPrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, 
       toast.error('Failed to load medicines list');
     } finally {
       setLoadingMedicines(false);
+    }
+  };
+
+  const fetchPharmacies = async () => {
+    setLoadingPharmacies(true);
+    try {
+      const response = await axios.get('/pharmacies/all');
+      const data = response.data;
+      
+      console.log('🏥 Fetched pharmacies:', data);
+      
+      if (data.success && Array.isArray(data.pharmacies)) {
+        setPharmacies(data.pharmacies);
+        toast.success(`Found ${data.pharmacies.length} pharmacies`);
+      }
+    } catch (error) {
+      console.error('Error fetching pharmacies:', error);
+      toast.error('Failed to load pharmacies list');
+    } finally {
+      setLoadingPharmacies(false);
     }
   };
 
@@ -485,6 +567,10 @@ const EnhancedPrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, 
         prescriptionData.appointmentId = appointmentId;
       }
 
+      if (formData.pharmacyId) {
+        prescriptionData.pharmacyId = formData.pharmacyId;
+      }
+
       console.log('📤 Sending prescription data:', {
         ...prescriptionData,
         diagnosisAudio: diagnosisAudioUrl ? 'URL present' : 'No audio',
@@ -508,9 +594,9 @@ const EnhancedPrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
-      <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl shadow-2xl max-w-5xl w-full my-2 sm:my-8">
-        <div className="p-4 sm:p-6 md:p-8 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
+      <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col my-2 sm:my-8">
+        <div className="p-4 sm:p-6 md:p-8 overflow-y-auto flex-1">
           {/* Header */}
           <div className="flex items-center justify-between mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-blue-200">
             <div className="flex items-center space-x-2 sm:space-x-3">
@@ -534,7 +620,7 @@ const EnhancedPrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, 
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+          <form id="prescription-form" onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {/* Patient Selection */}
             {(!patientId || !patientName) && (
               <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
@@ -547,35 +633,114 @@ const EnhancedPrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, 
                     <span className="ml-2 text-gray-600">Loading patients...</span>
                   </div>
                 ) : patients.length > 0 ? (
-                  <select
-                    value={formData.patientId}
-                    onChange={(e) => {
-                      const selectedPatient = patients.find(p => p.id === e.target.value);
-                      setFormData(prev => ({
-                        ...prev,
-                        patientId: e.target.value,
-                        patientName: selectedPatient?.name || ''
-                      }));
-                    }}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 transition-all"
-                    required
-                  >
-                    <option value="">-- Select a patient --</option>
-                    {patients.map(patient => (
-                      <option key={patient.id} value={patient.id}>
-                        {patient.name} ({patient.contact})
-                      </option>
-                    ))}
-                  </select>
+                  <>
+                    <select
+                      value={formData.patientId}
+                      onChange={(e) => {
+                        const selectedPatient = patients.find(p => p.id === e.target.value);
+                        setFormData(prev => ({
+                          ...prev,
+                          patientId: e.target.value,
+                          patientName: selectedPatient?.name || ''
+                        }));
+                      }}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 transition-all"
+                      required
+                    >
+                      <option value="">-- Select a patient --</option>
+                      {patients.map(patient => (
+                        <option key={patient.id} value={patient.id}>
+                          {patient.name} ({patient.contact})
+                        </option>
+                      ))}
+                    </select>
+                    <div className="mt-2 flex items-center text-sm text-green-600">
+                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      Found {patients.length} patient{patients.length !== 1 ? 's' : ''}
+                    </div>
+                  </>
                 ) : (
-                  <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
-                    <p className="text-yellow-800 text-sm">
-                      No patients found. Complete an appointment first to create prescriptions.
-                    </p>
+                  <div className="space-y-3">
+                    <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
+                      <div className="flex items-start">
+                        <svg className="w-5 h-5 text-red-600 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                        <div>
+                          <p className="text-red-800 font-semibold text-sm mb-1">No Patients Found</p>
+                          <p className="text-red-700 text-sm">
+                            You need to have completed appointments with patients before creating prescriptions.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-blue-800 text-sm font-medium mb-2">Troubleshooting Steps:</p>
+                      <ol className="text-blue-700 text-sm space-y-1 list-decimal list-inside">
+                        <li>Ensure you have completed at least one appointment</li>
+                        <li>Check the appointment status (should be completed/confirmed)</li>
+                        <li>Open browser console (F12) to see detailed logs</li>
+                        <li>Use the purple "Debug" button on this page for more info</li>
+                      </ol>
+                    </div>
                   </div>
                 )}
               </div>
             )}
+
+            {/* Pharmacy Selection */}
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-purple-100">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Select Pharmacy <span className="text-gray-400">(Optional)</span>
+              </label>
+              {loadingPharmacies ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                  <span className="ml-2 text-gray-600">Loading pharmacies...</span>
+                </div>
+              ) : pharmacies.length > 0 ? (
+                <>
+                  <select
+                    value={formData.pharmacyId}
+                    onChange={(e) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        pharmacyId: e.target.value
+                      }));
+                    }}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white text-gray-900 transition-all"
+                  >
+                    <option value="">-- No pharmacy selected --</option>
+                    {pharmacies.map(pharmacy => (
+                      <option key={pharmacy._id} value={pharmacy._id}>
+                        {pharmacy.name} - {pharmacy.address.city} ({pharmacy.address.pincode})
+                      </option>
+                    ))}
+                  </select>
+                  <div className="mt-2 flex items-center text-sm text-purple-600">
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Found {pharmacies.length} verified pharmacy{pharmacies.length !== 1 ? 'ies' : ''}
+                  </div>
+                  {formData.pharmacyId && (
+                    <div className="mt-2 bg-purple-50 border border-purple-200 rounded-lg p-3">
+                      <p className="text-purple-800 text-sm">
+                        <strong>Note:</strong> This prescription will be sent to the selected pharmacy and will appear on their dashboard.
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <p className="text-yellow-800 text-sm">
+                    No verified pharmacies available. You can still create the prescription without selecting a pharmacy.
+                  </p>
+                </div>
+              )}
+            </div>
 
             {/* Diagnosis with Audio Recording */}
             <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-blue-100">
@@ -668,7 +833,7 @@ const EnhancedPrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, 
             </div>
 
             {/* Medications */}
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100 pb-6">
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
               <div className="flex items-center justify-between mb-4">
                 <label className="block text-sm font-semibold text-gray-700">
                   Medications <span className="text-red-500">*</span>
@@ -683,7 +848,7 @@ const EnhancedPrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, 
                 </button>
               </div>
 
-              <div className="space-y-4 mb-4">
+              <div className="space-y-4">
                 {formData.medications.map((medication, index) => (
                   <div key={index} className="border-2 border-blue-100 rounded-xl p-4 bg-gradient-to-br from-gray-50 to-white">
                     <div className="flex items-center justify-between mb-4">
@@ -827,34 +992,36 @@ const EnhancedPrescriptionModal = ({ isOpen, onClose, appointmentId, patientId, 
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 sm:space-x-4 pt-4 sm:pt-6 pb-4 border-t-2 border-blue-200 sticky bottom-0 bg-gradient-to-br from-blue-50 to-white z-10">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 sm:px-6 py-2.5 sm:py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-medium text-sm sm:text-base order-2 sm:order-1"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-2 shadow-lg font-medium text-sm sm:text-base order-1 sm:order-2"
-              >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Creating...</span>
-                  </>
-                ) : (
-                  <>
-                    <FileText className="w-4 h-4" />
-                    <span>Create Prescription</span>
-                  </>
-                )}
-              </button>
-            </div>
           </form>
+        </div>
+        
+        {/* Action Buttons - Sticky at bottom of modal */}
+        <div className="bg-white border-t-2 border-blue-200 p-4 rounded-b-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 sm:gap-4 shadow-lg">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-medium text-base order-2 sm:order-1"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="prescription-form"
+            disabled={loading}
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-2 shadow-lg font-medium text-base order-1 sm:order-2"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Creating...</span>
+              </>
+            ) : (
+              <>
+                <FileText className="w-4 h-4" />
+                <span>Create Prescription</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>

@@ -38,6 +38,7 @@ import ECGVideoAnalysis from './pages/ECGVideoAnalysis';
 import GeneralAnalysis from './pages/GeneralAnalysis.jsx';
 import Appointments from './pages/Appointments.jsx';
 import Prescriptions from './pages/Prescriptions.jsx';
+import VerifyPrescription from './pages/VerifyPrescription.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import VideoAnalysisTest from './components/VideoAnalysisTest.jsx';
 import PharmacyRegistration from './pages/PharmacyRegistration.jsx';
@@ -61,9 +62,9 @@ function App() {
   }, []);
 
   return (
-    <div className="flex items-center flex-col">
+    <div className="flex items-center flex-col w-full min-h-screen overflow-x-hidden">
       <Navbar />
-      <div className="pt-20 pb-20 md:pb-0 w-full">
+      <div className="pt-20 pb-20 md:pb-0 w-full max-w-full overflow-x-hidden">
         <Routes>
           {/* Public Routes - Login pages only */}
           <Route path='/login' element={isAuthenticated ? <Navigate to="/" replace /> : <LoginSignupOTP />} />
@@ -102,6 +103,7 @@ function App() {
           <Route path='/account' element={<ProtectedRoute><Profile user={user} /></ProtectedRoute>} />
           <Route path='/appointments' element={<ProtectedRoute><Appointments /></ProtectedRoute>} />
           <Route path='/prescriptions' element={<ProtectedRoute><ErrorBoundary><Prescriptions /></ErrorBoundary></ProtectedRoute>} />
+          <Route path='/verify-prescription/:id' element={<VerifyPrescription />} />
           <Route path='/test-video' element={<ProtectedRoute><VideoAnalysisTest /></ProtectedRoute>} />
           
           {/* Pharmacy Routes */}

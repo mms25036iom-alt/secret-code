@@ -188,23 +188,42 @@ exports.newAppointment = catchAsyncError(async (req, res, next) => {
 exports.allAppointments = catchAsyncError(async (req, res, next) => {
     let appointments;
     try {
+        console.log(`📋 Fetching appointments for ${req.user.role}: ${req.user._id}`);
+        
         if (req.user.role == 'doctor') {
             appointments = await Appointment.find({ doctor: req.user._id })
                 .populate('patient', 'name contact')
                 .populate('doctor', 'name speciality availablity')
                 .sort({ day: -1, time: -1 }); // Most recent appointments first
+            
+            console.log(`✅ Found ${appointments.length} appointments for doctor`);
+            
+            // Log patient data for debugging
+            if (appointments.length > 0) {
+                console.log('📊 Sample appointment data:', {
+                    id: appointments[0]._id,
+                    status: appointments[0].status,
+                    hasPatient: !!appointments[0].patient,
+                    patientId: appointments[0].patient?._id,
+                    patientName: appointments[0].patient?.name,
+                    patientContact: appointments[0].patient?.contact
+                });
+            }
         } else {
             appointments = await Appointment.find({ patient: req.user._id })
                 .populate('doctor', 'name speciality availablity')
                 .populate('patient', 'name contact')
                 .sort({ day: -1, time: -1 }); // Most recent appointments first
+            
+            console.log(`✅ Found ${appointments.length} appointments for patient`);
         }
     } catch (error) {
-        console.error('Error fetching appointments:', error);
+        console.error('❌ Error fetching appointments:', error);
         return next(new ErrorHander(`Failed to fetch appointments: ${error.message}`, 500));
     }
 
     if (!appointments || appointments.length === 0) {
+        console.log('⚠️ No appointments found');
         return res.status(200).json({
             success: true,
             message: "No appointments found",

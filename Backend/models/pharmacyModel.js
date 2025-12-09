@@ -18,7 +18,7 @@ const pharmacySchema = new mongoose.Schema({
     verificationStatus: {
         type: String,
         enum: ['pending', 'verified', 'rejected', 'suspended'],
-        default: 'pending'
+        default: 'verified' // Auto-verify on registration for simplicity
     },
     verificationDocuments: {
         pharmacyLicense: {
@@ -101,7 +101,7 @@ const pharmacySchema = new mongoose.Schema({
     },
     isVerified: {
         type: Boolean,
-        default: false
+        default: true // Auto-verify on registration for simplicity
     },
     rating: {
         type: Number,

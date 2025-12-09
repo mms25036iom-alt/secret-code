@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import en from '../locales/en.json';
 import hi from '../locales/hi.json';
 import pa from '../locales/pa.json';
@@ -28,10 +28,11 @@ export const LanguageProvider = ({ children }) => {
         localStorage.setItem('appLanguage', language);
         // Update HTML lang attribute for accessibility
         document.documentElement.lang = language;
+        console.log('Language changed to:', language);
     }, [language]);
 
-    // Translation function with nested key support
-    const t = (key, params = {}) => {
+    // Translation function with nested key support - memoized with language dependency
+    const t = useCallback((key, params = {}) => {
         const keys = key.split('.');
         let value = translations[language];
 
@@ -61,26 +62,31 @@ export const LanguageProvider = ({ children }) => {
         }
 
         return value || key;
-    };
+    }, [language]);
 
-    const changeLanguage = (lang) => {
+    const changeLanguage = useCallback((lang) => {
         if (translations[lang]) {
+            console.log('Changing language from', language, 'to', lang);
             setLanguage(lang);
         } else {
             console.warn(`Language '${lang}' not supported. Available: ${Object.keys(translations).join(', ')}`);
         }
-    };
+    }, [language]);
 
-    const value = {
+    const availableLanguages = useMemo(() => [
+        { code: 'en', name: 'English', nativeName: 'English' },
+        { code: 'hi', name: 'Hindi', nativeName: 'हिंदी' },
+        { code: 'pa', name: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ' }
+    ], []);
+
+    // Memoize the context value to prevent unnecessary re-renders
+    // but ensure it updates when language changes
+    const value = useMemo(() => ({
         language,
         changeLanguage,
         t,
-        availableLanguages: [
-            { code: 'en', name: 'English', nativeName: 'English' },
-            { code: 'hi', name: 'Hindi', nativeName: 'हिंदी' },
-            { code: 'pa', name: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ' }
-        ]
-    };
+        availableLanguages
+    }), [language, changeLanguage, t, availableLanguages]);
 
     return (
         <LanguageContext.Provider value={value}>
@@ -88,3 +94,5 @@ export const LanguageProvider = ({ children }) => {
         </LanguageContext.Provider>
     );
 };
+
+export default LanguageContext;

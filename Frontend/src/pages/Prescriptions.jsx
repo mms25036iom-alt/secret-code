@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { FileText, Plus, Filter } from 'lucide-react';
+import { FileText, Plus, Filter, RefreshCw } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { getPrescriptions } from '../actions/prescriptionActions';
 import PrescriptionCard from '../components/PrescriptionCard';
 import EnhancedPrescriptionModal from '../components/EnhancedPrescriptionModal';
 import SearchBar from '../components/SearchBar';
+import DebugAppointments from '../components/DebugAppointments';
+import AuthDebugger from '../components/AuthDebugger';
 
 const Prescriptions = () => {
   const dispatch = useDispatch();
@@ -17,6 +19,7 @@ const Prescriptions = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -26,6 +29,20 @@ const Prescriptions = () => {
       });
     }
   }, [dispatch, isAuthenticated, user]);
+
+  // Auto-refresh prescriptions every 30 seconds to show updated status
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    
+    const refreshInterval = setInterval(() => {
+      console.log('🔄 Auto-refreshing prescriptions...');
+      dispatch(getPrescriptions()).catch(error => {
+        console.error('Error auto-refreshing prescriptions:', error);
+      });
+    }, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(refreshInterval);
+  }, [dispatch, isAuthenticated]);
 
   // Handle appointment data passed from navigation
   useEffect(() => {
@@ -61,6 +78,18 @@ const Prescriptions = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedAppointment(null);
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await dispatch(getPrescriptions());
+      console.log('✅ Prescriptions refreshed');
+    } catch (error) {
+      console.error('Error refreshing prescriptions:', error);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500); // Small delay for visual feedback
+    }
   };
 
   // Redirect if not authenticated
@@ -115,13 +144,23 @@ const Prescriptions = () => {
               </p>
             </div>
             {user.role === 'doctor' && (
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="flex items-center justify-center space-x-2 px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all active:scale-95 shadow-md text-sm md:text-base font-semibold"
-              >
-                <Plus className="w-4 h-4 md:w-5 md:h-5" />
-                <span>Create</span>
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="flex items-center justify-center p-2.5 md:p-3 bg-white border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all active:scale-95 shadow-sm disabled:opacity-50"
+                  title="Refresh prescriptions"
+                >
+                  <RefreshCw className={`w-4 h-4 md:w-5 md:h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </button>
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="flex items-center justify-center space-x-2 px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all active:scale-95 shadow-md text-sm md:text-base font-semibold"
+                >
+                  <Plus className="w-4 h-4 md:w-5 md:h-5" />
+                  <span>Create</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -273,6 +312,14 @@ const Prescriptions = () => {
           patientId={selectedAppointment?.patient?._id}
           patientName={selectedAppointment?.patient?.name}
         />
+        
+        {/* Debug Components - Only for doctors */}
+        {user.role === 'doctor' && (
+          <>
+            <AuthDebugger />
+            <DebugAppointments />
+          </>
+        )}
       </div>
     </div>
   );

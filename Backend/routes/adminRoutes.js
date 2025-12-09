@@ -70,12 +70,55 @@ router.put('/pharmacy/:id/status', isAuthenticated, authorizeRoles('admin'), asy
         }
 
         pharmacy.verificationStatus = status;
+        pharmacy.isVerified = (status === 'verified');
+        pharmacy.status = (status === 'verified') ? 'active' : pharmacy.status;
         await pharmacy.save();
 
         res.status(200).json({
             success: true,
             message: 'Pharmacy status updated successfully',
             pharmacy
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+// Verify pharmacy by phone number (Admin only or for testing)
+router.put('/pharmacy/verify-by-phone/:phone', async (req, res) => {
+    try {
+        const { phone } = req.params;
+
+        const pharmacy = await Pharmacy.findOne({
+            'contactInfo.phone': phone
+        });
+
+        if (!pharmacy) {
+            return res.status(404).json({
+                success: false,
+                message: `No pharmacy found with phone number: ${phone}`
+            });
+        }
+
+        pharmacy.verificationStatus = 'verified';
+        pharmacy.isVerified = true;
+        pharmacy.status = 'active';
+        await pharmacy.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Pharmacy verified successfully',
+            pharmacy: {
+                id: pharmacy._id,
+                name: pharmacy.name,
+                phone: pharmacy.contactInfo.phone,
+                verificationStatus: pharmacy.verificationStatus,
+                isVerified: pharmacy.isVerified,
+                status: pharmacy.status
+            }
         });
     } catch (error) {
         res.status(500).json({

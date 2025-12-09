@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import axios from '../axios';
+import PharmacyPrescriptions from '../components/PharmacyPrescriptions';
 
 const PharmacistDashboard = () => {
     const navigate = useNavigate();
@@ -461,20 +462,20 @@ Amoxicillin 250mg,Amoxicillin,Antibiotics,XYZ Labs,Amoxicillin 250mg,250mg,Capsu
             {/* Header */}
             <div className="bg-white shadow-sm border-b">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                    <div className="flex justify-between items-center">
-                        <h1 className="text-2xl font-bold text-gray-900">
-                            {pharmacy?.name} - Dashboard
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <h1 className="text-lg sm:text-2xl font-bold text-gray-900 break-words max-w-full">
+                            {pharmacy?.name}
                         </h1>
-                        <div className="flex space-x-3">
+                        <div className="flex flex-wrap gap-2 sm:space-x-3">
                             <button
                                 onClick={() => setShowBulkUploadModal(true)}
-                                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap"
                             >
                                 Bulk Upload
                             </button>
                             <button
                                 onClick={() => navigate('/pharmacist/create-medicine')}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap"
                             >
                                 Add Medicine
                             </button>
@@ -485,9 +486,10 @@ Amoxicillin 250mg,Amoxicillin,Antibiotics,XYZ Labs,Amoxicillin 250mg,250mg,Capsu
 
             {/* Tab Navigation */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                <div className="flex space-x-1 mb-6">
+                <div className="flex space-x-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
                     {[
                         { id: 'overview', label: 'Overview' },
+                        { id: 'prescriptions', label: 'Prescriptions' },
                         { id: 'medicines', label: 'Medicines' },
                         { id: 'orders', label: 'Orders' },
                         { id: 'alerts', label: 'Alerts' },
@@ -496,7 +498,7 @@ Amoxicillin 250mg,Amoxicillin,Antibiotics,XYZ Labs,Amoxicillin 250mg,250mg,Capsu
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${
                                 activeTab === tab.id
                                     ? 'bg-blue-600 text-white'
                                     : 'bg-white text-gray-600 hover:text-gray-900'
@@ -544,7 +546,15 @@ Amoxicillin 250mg,Amoxicillin,Antibiotics,XYZ Labs,Amoxicillin 250mg,250mg,Capsu
                         {/* Quick Actions */}
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                             <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <button
+                                    onClick={() => setActiveTab('prescriptions')}
+                                    className="p-4 border border-purple-200 bg-purple-50 rounded-lg hover:bg-purple-100 text-left"
+                                >
+                                    <div className="text-sm font-medium text-purple-900">Manage Prescriptions</div>
+                                    <div className="text-xs text-purple-700">Dispense & scan QR codes</div>
+                                </button>
+                                
                                 <button
                                     onClick={() => setActiveTab('medicines')}
                                     className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left"
@@ -570,6 +580,13 @@ Amoxicillin 250mg,Amoxicillin,Antibiotics,XYZ Labs,Amoxicillin 250mg,250mg,Capsu
                                 </button>
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {/* Prescriptions Tab */}
+                {activeTab === 'prescriptions' && (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <PharmacyPrescriptions />
                     </div>
                 )}
 

@@ -1,18 +1,21 @@
-import React, { useState, useRef } from 'react';
-import { Calendar, User, FileText, Download, Eye, ChevronDown, ChevronUp, Volume2, Play, Pause } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Calendar, User, FileText, Download, Eye, ChevronDown, ChevronUp, Volume2, Play, Pause, QrCode } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import axios from '../axios';
 import { toast } from 'react-toastify';
+import QRCode from 'qrcode';
 
 const PrescriptionCard = ({ prescription, userRole }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [playingAudio, setPlayingAudio] = useState(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [showQRModal, setShowQRModal] = useState(false);
   const audioRef = useRef(null);
 
   // Debug: Log prescription data
-  React.useEffect(() => {
+  useEffect(() => {
     console.log('🔍 Prescription Card Data:', {
       id: prescription._id,
       diagnosisAudio: prescription.diagnosisAudio,
@@ -23,6 +26,57 @@ const PrescriptionCard = ({ prescription, userRole }) => {
       }))
     });
   }, [prescription]);
+
+  // Generate QR Code
+  useEffect(() => {
+    const generateQRCode = async () => {
+      try {
+        // Check if prescription is already dispensed
+        const isDispensed = prescription.pharmacyStatus === 'dispensed';
+        
+        // Create prescription data for QR code
+        const prescriptionData = {
+          id: prescription._id,
+          number: prescription.prescriptionNumber,
+          patient: prescription.patient?.name,
+          doctor: prescription.doctor?.name,
+          date: new Date(prescription.createdAt).toLocaleDateString(),
+          diagnosis: prescription.diagnosis,
+          medications: prescription.medications.map(m => ({
+            name: m.name,
+            dosage: m.dosage,
+            frequency: m.frequency,
+            duration: m.duration
+          })),
+          status: prescription.pharmacyStatus,
+          dispensedAt: prescription.dispensedAt,
+          // Add validation flag
+          isValid: !isDispensed,
+          // Create a verification URL
+          verifyUrl: `${window.location.origin}/verify-prescription/${prescription._id}`
+        };
+        
+        // Generate QR code with prescription data
+        // If dispensed, make it visually different (red color)
+        const qrUrl = await QRCode.toDataURL(JSON.stringify(prescriptionData), {
+          width: 300,
+          margin: 2,
+          color: {
+            dark: isDispensed ? '#dc2626' : '#2563eb', // Red if dispensed, blue if active
+            light: '#ffffff'
+          }
+        });
+        
+        setQrCodeUrl(qrUrl);
+      } catch (error) {
+        console.error('Error generating QR code:', error);
+      }
+    };
+    
+    if (prescription) {
+      generateQRCode();
+    }
+  }, [prescription, prescription.pharmacyStatus]);
 
   const handleDownloadPDF = async () => {
     setIsDownloading(true);
@@ -76,20 +130,47 @@ const PrescriptionCard = ({ prescription, userRole }) => {
     }
   };
 
+  // Determine if prescription is dispensed
+  const isDispensed = prescription.pharmacyStatus === 'dispensed';
+  const dispensedDate = prescription.dispensedAt ? new Date(prescription.dispensedAt).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }) : null;
+
   return (
-    <div className="bg-white rounded-lg md:rounded-xl shadow-md border border-gray-200 overflow-hidden">
+    <div className={`bg-white rounded-lg md:rounded-xl shadow-md border-2 overflow-hidden ${
+      isDispensed ? 'border-green-500' : 'border-gray-200'
+    }`}>
       {/* Header - Mobile Optimized */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 md:p-6 border-b border-gray-200">
+      <div className={`p-3 md:p-6 border-b ${
+        isDispensed 
+          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200' 
+          : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-gray-200'
+      }`}>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           {/* Left side - Icon and Info */}
           <div className="flex items-start md:items-center space-x-2 md:space-x-4">
-            <div className="p-2 md:p-3 bg-blue-100 rounded-lg flex-shrink-0">
-              <FileText className="w-4 h-4 md:w-6 md:h-6 text-blue-600" />
+            <div className={`p-2 md:p-3 rounded-lg flex-shrink-0 ${
+              isDispensed ? 'bg-green-100' : 'bg-blue-100'
+            }`}>
+              <FileText className={`w-4 h-4 md:w-6 md:h-6 ${
+                isDispensed ? 'text-green-600' : 'text-blue-600'
+              }`} />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-sm md:text-xl font-bold text-gray-900 truncate">
-                Prescription #{prescription.prescriptionNumber}
-              </h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm md:text-xl font-bold text-gray-900 truncate">
+                  Prescription #{prescription.prescriptionNumber}
+                </h3>
+                {isDispensed && (
+                  <span className="inline-flex items-center px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-green-600 text-white shadow-sm">
+                    ✓ Medicine Taken
+                  </span>
+                )}
+              </div>
               <div className="flex flex-col md:flex-row md:items-center md:space-x-4 text-xs md:text-sm text-gray-600 mt-1 gap-1 md:gap-0">
                 <div className="flex items-center space-x-1">
                   <Calendar className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
@@ -105,11 +186,23 @@ const PrescriptionCard = ({ prescription, userRole }) => {
                   </span>
                 </div>
               </div>
+              {isDispensed && dispensedDate && (
+                <div className="mt-2 text-xs text-green-700 font-medium">
+                  📦 Dispensed on {dispensedDate} by {prescription.dispensedBy?.name || 'Pharmacist'}
+                </div>
+              )}
             </div>
           </div>
           
           {/* Right side - Action Buttons */}
           <div className="flex items-center justify-end space-x-2 flex-shrink-0">
+            <button
+              onClick={() => setShowQRModal(true)}
+              className="p-1.5 md:p-2 hover:bg-purple-100 rounded-lg transition-colors"
+              title="Show QR Code"
+            >
+              <QrCode className="w-4 h-4 md:w-5 md:h-5 text-purple-600" />
+            </button>
             <button
               onClick={() => setIsExpanded(!isExpanded)}
               className="p-1.5 md:p-2 hover:bg-blue-100 rounded-lg transition-colors"
@@ -296,6 +389,93 @@ const PrescriptionCard = ({ prescription, userRole }) => {
             <p className="text-xs text-gray-500 mt-1">
               For any queries, please contact the prescribing doctor.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* QR Code Modal */}
+      {showQRModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setShowQRModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Prescription QR Code</h3>
+              <button
+                onClick={() => setShowQRModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <span className="text-2xl text-gray-500">&times;</span>
+              </button>
+            </div>
+            
+            {/* Dispensed Warning */}
+            {isDispensed && (
+              <div className="bg-red-50 border-2 border-red-500 rounded-lg p-4 mb-4">
+                <div className="flex items-center space-x-2 mb-2">
+                  <span className="text-2xl">⚠️</span>
+                  <h4 className="font-bold text-red-900">QR Code Invalid</h4>
+                </div>
+                <p className="text-sm text-red-800">
+                  This prescription has already been dispensed on {dispensedDate}. 
+                  The QR code is no longer valid for pharmacy use.
+                </p>
+              </div>
+            )}
+            
+            <div className="text-center">
+              <div className={`p-6 rounded-xl mb-4 ${
+                isDispensed 
+                  ? 'bg-gradient-to-br from-red-50 to-orange-50 opacity-60' 
+                  : 'bg-gradient-to-br from-blue-50 to-purple-50'
+              }`}>
+                {qrCodeUrl ? (
+                  <div className="relative">
+                    <img src={qrCodeUrl} alt="Prescription QR Code" className="mx-auto" />
+                    {isDispensed && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="bg-red-600 text-white px-6 py-3 rounded-lg font-bold text-xl transform rotate-12 shadow-2xl">
+                          USED
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-64">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                  </div>
+                )}
+              </div>
+              
+              <div className={`border rounded-lg p-4 mb-4 ${
+                isDispensed 
+                  ? 'bg-red-50 border-red-200' 
+                  : 'bg-blue-50 border-blue-200'
+              }`}>
+                <p className="text-sm text-gray-700 mb-2">
+                  <strong>Prescription #:</strong> {prescription.prescriptionNumber}
+                </p>
+                <p className={`text-xs font-semibold ${
+                  isDispensed ? 'text-red-700' : 'text-gray-600'
+                }`}>
+                  {isDispensed 
+                    ? '❌ This QR code has been used and is no longer valid'
+                    : '✓ Scan this QR code at the pharmacy to dispense medicines'
+                  }
+                </p>
+              </div>
+              
+              <button
+                onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = qrCodeUrl;
+                  link.download = `prescription-qr-${prescription.prescriptionNumber}.png`;
+                  link.click();
+                  toast.success('QR Code downloaded!');
+                }}
+                className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all font-semibold"
+              >
+                Download QR Code
+              </button>
+            </div>
           </div>
         </div>
       )}

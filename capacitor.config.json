@@ -1,5 +1,31 @@
 {
   "appId": "com.cureon.telemed",
-  "appName": "cureon",
-  "webDir": "www"
+  "appName": "Cureon",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#2563eb",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false
+    },
+    "Keyboard": {
+      "resize": "body",
+      "style": "dark",
+      "resizeOnFullScreen": true
+    },
+    "StatusBar": {
+      "style": "dark",
+      "backgroundColor": "#2563eb"
+    }
+  }
 }

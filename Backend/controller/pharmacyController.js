@@ -78,7 +78,11 @@ exports.registerPharmacy = catchAsyncError(async (req, res, next) => {
         licenseNumber,
         establishedYear,
         operatingHours,
-        deliveryRadius
+        deliveryRadius,
+        // Auto-verify pharmacy on registration
+        verificationStatus: 'verified',
+        isVerified: true,
+        status: 'active'
     };
 
     if (req.file) {
@@ -93,9 +97,11 @@ exports.registerPharmacy = catchAsyncError(async (req, res, next) => {
     // Update user role to pharmacist
     await User.findByIdAndUpdate(req.user._id, { role: 'pharmacist' });
 
+    console.log('✅ Pharmacy auto-verified on registration:', pharmacy.name);
+
     res.status(201).json({
         success: true,
-        message: 'Pharmacy registered successfully',
+        message: 'Pharmacy registered and verified successfully! You can now receive prescriptions.',
         pharmacy
     });
 });

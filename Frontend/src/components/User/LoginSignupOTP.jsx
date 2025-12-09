@@ -584,76 +584,112 @@ const LoginSignupOTP = () => {
               {/* Gender Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Gender
+                  Gender <span className="text-red-500">*</span>
                 </label>
                 <div className="grid grid-cols-3 gap-3">
                   {["male", "female", "other"].map((gender) => (
                     <button
                       key={gender}
                       type="button"
-                      onClick={() => setFormData((prev) => ({ ...prev, gender }))}
-                      className={`py-3 px-4 rounded-xl font-medium capitalize transition-all ${
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, gender }));
+                        console.log('Gender selected:', gender);
+                      }}
+                      className={`relative py-3 px-4 rounded-xl font-medium capitalize transition-all transform active:scale-95 ${
                         formData.gender === gender
-                          ? "bg-blue-500 text-white shadow-lg"
-                          : "bg-gray-50 text-gray-700 hover:bg-gray-100 border-2 border-gray-200"
+                          ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg ring-4 ring-blue-200 scale-105"
+                          : "bg-white text-gray-700 hover:bg-blue-50 border-2 border-gray-300 hover:border-blue-400"
                       }`}
                     >
+                      {formData.gender === gender && (
+                        <CheckCircle className="absolute top-1 right-1 w-5 h-5 text-white" />
+                      )}
                       {gender}
                     </button>
                   ))}
                 </div>
+                {formData.gender && (
+                  <p className="mt-2 text-sm text-green-600 flex items-center">
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    Selected: {formData.gender}
+                  </p>
+                )}
               </div>
 
               {/* Role Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
-                  I am a
+                  I am a <span className="text-red-500">*</span>
                 </label>
                 <div className="grid grid-cols-3 gap-3">
                   <button
                     type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, role: "user" }))}
-                    className={`flex flex-col items-center p-4 rounded-xl transition-all ${
+                    onClick={() => {
+                      setFormData((prev) => ({ ...prev, role: "user" }));
+                      console.log('Role selected: user');
+                    }}
+                    className={`relative flex flex-col items-center p-4 rounded-xl transition-all transform active:scale-95 ${
                       formData.role === "user"
-                        ? "bg-blue-500 text-white shadow-lg"
-                        : "bg-gray-50 text-gray-700 hover:bg-gray-100 border-2 border-gray-200"
+                        ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-xl ring-4 ring-blue-200 scale-105"
+                        : "bg-white text-gray-700 hover:bg-blue-50 border-2 border-gray-300 hover:border-blue-400"
                     }`}
                   >
-                    <User size={24} className="mb-2" />
-                    <span className="text-sm font-medium">Patient</span>
+                    {formData.role === "user" && (
+                      <CheckCircle className="absolute top-2 right-2 w-5 h-5 text-white" />
+                    )}
+                    <User size={28} className="mb-2" />
+                    <span className="text-sm font-semibold">Patient</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, role: "doctor" }))}
-                    className={`flex flex-col items-center p-4 rounded-xl transition-all ${
+                    onClick={() => {
+                      setFormData((prev) => ({ ...prev, role: "doctor" }));
+                      console.log('Role selected: doctor');
+                    }}
+                    className={`relative flex flex-col items-center p-4 rounded-xl transition-all transform active:scale-95 ${
                       formData.role === "doctor"
-                        ? "bg-blue-500 text-white shadow-lg"
-                        : "bg-gray-50 text-gray-700 hover:bg-gray-100 border-2 border-gray-200"
+                        ? "bg-gradient-to-br from-green-500 to-green-600 text-white shadow-xl ring-4 ring-green-200 scale-105"
+                        : "bg-white text-gray-700 hover:bg-green-50 border-2 border-gray-300 hover:border-green-400"
                     }`}
                   >
-                    <Stethoscope size={24} className="mb-2" />
-                    <span className="text-sm font-medium">Doctor</span>
+                    {formData.role === "doctor" && (
+                      <CheckCircle className="absolute top-2 right-2 w-5 h-5 text-white" />
+                    )}
+                    <Stethoscope size={28} className="mb-2" />
+                    <span className="text-sm font-semibold">Doctor</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, role: "pharmacist" }))}
-                    className={`flex flex-col items-center p-4 rounded-xl transition-all ${
+                    onClick={() => {
+                      setFormData((prev) => ({ ...prev, role: "pharmacist" }));
+                      console.log('Role selected: pharmacist');
+                    }}
+                    className={`relative flex flex-col items-center p-4 rounded-xl transition-all transform active:scale-95 ${
                       formData.role === "pharmacist"
-                        ? "bg-blue-500 text-white shadow-lg"
-                        : "bg-gray-50 text-gray-700 hover:bg-gray-100 border-2 border-gray-200"
+                        ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-xl ring-4 ring-purple-200 scale-105"
+                        : "bg-white text-gray-700 hover:bg-purple-50 border-2 border-gray-300 hover:border-purple-400"
                     }`}
                   >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    {formData.role === "pharmacist" && (
+                      <CheckCircle className="absolute top-2 right-2 w-5 h-5 text-white" />
+                    )}
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
                       <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
                       <path d="M12 6v6" />
                       <path d="M9 9h6" />
                     </svg>
-                    <span className="text-sm font-medium mt-2">Pharmacist</span>
+                    <span className="text-sm font-semibold mt-2">Pharmacist</span>
                   </button>
                 </div>
+                {formData.role && (
+                  <p className="mt-2 text-sm text-green-600 flex items-center">
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    Selected: {formData.role === 'user' ? 'Patient' : formData.role.charAt(0).toUpperCase() + formData.role.slice(1)}
+                  </p>
+                )}
               </div>
 
               {/* Doctor-specific fields */}

@@ -265,32 +265,22 @@ const MedicineCatalog = () => {
                     </button>
                 </div>
 
-                {/* Categories - Horizontal Scroll */}
+                {/* Categories - Dropdown for better space usage */}
                 <div className="mb-4">
-                    <div className="flex items-center justify-between mb-3">
-                        <h2 className="text-base font-bold text-gray-900">Categories</h2>
-                        <button className="text-blue-600 font-semibold text-xs">See All</button>
-                    </div>
-                    <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Category
+                    </label>
+                    <select
+                        value={filters.category}
+                        onChange={(e) => handleFilterChange('category', e.target.value)}
+                        className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    >
                         {categoryList.map((category) => (
-                            <button
-                                key={category.id}
-                                onClick={() => handleFilterChange('category', category.id)}
-                                className={`flex flex-col items-center min-w-[70px] transition-all active:scale-95 ${
-                                    filters.category === category.id ? 'opacity-100' : 'opacity-70'
-                                }`}
-                            >
-                                <div className={`w-14 h-14 rounded-2xl bg-orange-100 flex items-center justify-center mb-1.5 ${
-                                    filters.category === category.id ? 'ring-2 ring-orange-500 ring-offset-2' : ''
-                                }`}>
-                                    <span className="text-2xl">{category.icon}</span>
-                                </div>
-                                <span className="text-[10px] font-medium text-gray-700 text-center leading-tight">
-                                    {category.name}
-                                </span>
-                            </button>
+                            <option key={category.id} value={category.id}>
+                                {category.icon} {category.name}
+                            </option>
                         ))}
-                    </div>
+                    </select>
                 </div>
 
                 {/* Sort Option */}

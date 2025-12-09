@@ -1,7 +1,7 @@
 const express = require('express');
 const { registerUser, loginUser, getUserDetails, logout, getAllUsers, getSingleUser, updateUserRole, deleteUser, getAllDoctors, addMedicalHistory, getMedicalHistory, notifyDoctorJoined, getCompletePatientData, sendOTP, verifyOTPAndAuth, uploadMedicalDocument, getMedicalDocuments, deleteMedicalDocument, getTreatedPatients, getPatientCompleteDetails, generatePatientDataPDF, getDoctorStats } = require('../controller/userController');
 const { isAuthenticatedUser, authorizeRoles } = require('../middleware/auth');
-const { createPrescription, getPrescriptions, getSinglePrescription, generatePrescriptionPDF } = require('../controller/prescriptionController');
+const { createPrescription, getPrescriptions, getSinglePrescription, generatePrescriptionPDF, dispensePrescription, getAllPharmacies } = require('../controller/prescriptionController');
 const { uploadSingle, uploadDocument } = require('../utils/cloudinary');
 
 const router = express.Router()
@@ -37,6 +37,15 @@ router.route("/prescription/:id")
 
 router.route("/prescription/:id/pdf")
     .get(isAuthenticatedUser, generatePrescriptionPDF);
+
+router.route("/prescription/:id/verify")
+    .get(getSinglePrescription); // Public route for QR code verification (no auth required)
+
+router.route("/prescription/:id/dispense")
+    .put(isAuthenticatedUser, authorizeRoles("pharmacist", "pharmacy"), dispensePrescription);
+
+router.route("/pharmacies/all")
+    .get(isAuthenticatedUser, getAllPharmacies);
 
 router.route("/notify-doctor-joined")
     .post(isAuthenticatedUser, authorizeRoles("doctor"), notifyDoctorJoined);

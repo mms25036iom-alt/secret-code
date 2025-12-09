@@ -58,6 +58,23 @@ const prescriptionSchema = new mongoose.Schema({
         unique: true,
         required: true
     },
+    pharmacy: {
+        type: mongoose.Schema.ObjectId,
+        ref: "Pharmacy",
+        required: false // Optional - doctor can prescribe without selecting pharmacy
+    },
+    pharmacyStatus: {
+        type: String,
+        enum: ['pending', 'dispensed', 'cancelled'],
+        default: 'pending'
+    },
+    dispensedAt: {
+        type: Date
+    },
+    dispensedBy: {
+        type: mongoose.Schema.ObjectId,
+        ref: "User" // Pharmacist who dispensed
+    },
     createdAt: {
         type: Date,
         default: Date.now
