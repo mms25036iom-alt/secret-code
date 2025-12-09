@@ -158,10 +158,19 @@ exports.loginUser = catchAsyncError(async (req, res, next) => {
 
 // Logout User
 exports.logout = catchAsyncError(async (req, res, next) => {
-    res.cookie("token", null, {
-        expires: new Date(Date.now()),
-        httpOnly: true
+    // Determine if we're in production
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    // Clear the token cookie with proper settings
+    res.cookie("token", "", {
+        expires: new Date(0), // Expire immediately
+        httpOnly: true,
+        sameSite: isProduction ? 'none' : 'lax',
+        secure: isProduction,
+        path: '/'
     });
+
+    console.log('🚪 User logged out successfully');
 
     res.status(200).json({
         success: true,

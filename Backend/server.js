@@ -277,6 +277,15 @@ mongoose.connect(process.env.MONGODB_URI).then(() => {
     scheduleReminders();
 });
 
+// Simple health check endpoint (for Render.com)
+app.get('/api/v1/health-check', (req, res) => {
+    res.status(200).json({
+        success: true,
+        message: 'Server is running',
+        timestamp: new Date().toISOString()
+    });
+});
+
 // Routes
 const user = require('./routes/userRoute');
 app.use("/api/v1", user);
