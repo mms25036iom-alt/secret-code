@@ -55,54 +55,78 @@ const BottomNavBar = () => {
     }
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 z-[9999] md:hidden" style={{ position: 'fixed', zIndex: 9999 }}>
-            <div className="bg-white border-t border-gray-300 px-2 py-3 shadow-lg">
-                <div className="flex justify-around items-center relative">
-                    {/* Active indicator line */}
-                    <div 
-                        className="absolute top-0 h-0.5 bg-black transition-all duration-300 ease-out"
+        <div className="fixed bottom-0 left-0 right-0 z-[9999] md:hidden bottom-nav" style={{ position: 'fixed', zIndex: 9999 }}>
+            <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-2 py-2">
+                <div className="flex justify-around items-center relative max-w-md mx-auto">
+                    {/* Active indicator line - Material Design 3 style */}
+                    <div
+                        className="absolute top-0 h-1 bg-blue-500 rounded-b-full transition-all duration-300 ease-out"
                         style={{
                             width: `${100 / navItems.length}%`,
                             left: `${(navItems.findIndex(item => isActive(item.path)) * 100) / navItems.length}%`,
                         }}
                     />
-                    
+
                     {navItems.map((item, index) => {
                         const Icon = item.icon;
                         const active = isActive(item.path);
-                        
+
                         return (
                             <button
                                 key={item.path}
                                 onClick={() => navigate(item.path)}
-                                className="relative flex flex-col items-center justify-center transition-all duration-300 ease-out px-4"
+                                className={`
+                                    relative flex flex-col items-center justify-center
+                                    transition-all duration-200 ease-out
+                                    px-3 py-2 rounded-2xl min-w-[64px] min-h-[56px]
+                                    hover:bg-gray-100 dark:hover:bg-gray-800
+                                    active:scale-95
+                                    ${active ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
+                                `}
+                                style={{
+                                    WebkitTapHighlightColor: 'transparent'
+                                }}
                             >
-                                {/* Icon */}
+                                {/* Material Design 3 Container */}
                                 <div className={`
-                                    relative transition-all duration-300 ease-out
-                                    ${active ? 'mb-1' : 'mb-0'}
+                                    flex flex-col items-center justify-center gap-1
+                                    transition-all duration-200 ease-out
                                 `}>
-                                    <Icon 
-                                        className={`
-                                            w-6 h-6 transition-all duration-300 ease-out
-                                            ${active 
-                                                ? 'text-black scale-110' 
-                                                : 'text-gray-600'
-                                            }
-                                        `}
-                                        strokeWidth={active ? 2.5 : 2}
-                                    />
+                                    {/* Icon with Material Design 3 state layer */}
+                                    <div className={`
+                                        relative transition-all duration-200 ease-out
+                                        ${active ? 'scale-110' : 'scale-100'}
+                                    `}>
+                                        {active && (
+                                            <div className="absolute inset-0 bg-blue-500/10 rounded-full scale-150 -z-10" />
+                                        )}
+                                        <Icon
+                                            className={`
+                                                w-6 h-6 transition-all duration-200 ease-out
+                                                ${active
+                                                    ? 'text-blue-600 dark:text-blue-400'
+                                                    : 'text-gray-600 dark:text-gray-400'
+                                                }
+                                            `}
+                                            strokeWidth={active ? 2.5 : 2}
+                                        />
+                                    </div>
+
+                                    {/* Label - Material Design 3 style */}
+                                    <span className={`
+                                        text-[11px] font-medium transition-all duration-200 ease-out
+                                        ${active
+                                            ? 'text-blue-600 dark:text-blue-400 opacity-100 translate-y-0'
+                                            : 'text-gray-600 dark:text-gray-400 opacity-80 translate-y-0'
+                                        }
+                                    `}>
+                                        {item.label}
+                                    </span>
                                 </div>
-                                
-                                {/* Label */}
-                                <span className={`
-                                    text-[10px] font-medium transition-all duration-300 ease-out mt-1
-                                    ${active 
-                                        ? 'text-black opacity-100 translate-y-0' 
-                                        : 'text-gray-600 opacity-0 -translate-y-1'
-                                    }
-                                `}>
-                                    {item.label}
+
+                                {/* Material Design ripple effect */}
+                                <span className="absolute inset-0 overflow-hidden rounded-2xl">
+                                    <span className="absolute inset-0 bg-black opacity-0 active:opacity-10 transition-opacity duration-200" />
                                 </span>
                             </button>
                         );

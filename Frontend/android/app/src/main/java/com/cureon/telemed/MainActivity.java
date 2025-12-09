@@ -109,7 +109,7 @@ public class MainActivity extends BridgeActivity {
             }
 
             WebSettings settings = webView.getSettings();
-            
+
             // Essential for WebRTC
             settings.setJavaScriptEnabled(true);
             settings.setDomStorageEnabled(true);
@@ -117,17 +117,42 @@ public class MainActivity extends BridgeActivity {
             settings.setAllowFileAccess(true);
             settings.setAllowContentAccess(true);
             settings.setJavaScriptCanOpenWindowsAutomatically(true);
-            
-            // Database and cache
+
+            // Database and cache - Enhanced for better performance
             settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-            
+            settings.setDatabaseEnabled(true);
+            settings.setAppCacheEnabled(true);
+
             // Mixed content for HTTPS/HTTP
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
             }
-            
-            // Hardware acceleration
+
+            // Hardware acceleration - Enhanced
             webView.setLayerType(WebView.LAYER_TYPE_HARDWARE, null);
+
+            // Performance optimizations
+            settings.setRenderPriority(WebSettings.RenderPriority.HIGH);
+            settings.setEnableSmoothTransition(true);
+
+            // Geolocation support
+            settings.setGeolocationEnabled(true);
+
+            // Zoom and viewport settings
+            settings.setSupportZoom(false);
+            settings.setBuiltInZoomControls(false);
+            settings.setDisplayZoomControls(false);
+            settings.setUseWideViewPort(true);
+            settings.setLoadWithOverviewMode(true);
+
+            // Enhanced rendering
+            settings.setLoadsImagesAutomatically(true);
+            settings.setBlockNetworkImage(false);
+
+            // Modern web features
+            settings.setSupportMultipleWindows(false);
+            settings.setAllowUniversalAccessFromFileURLs(false);
+            settings.setAllowFileAccessFromFileURLs(false);
 
             // Custom WebChromeClient that extends Capacitor's and handles WebRTC permissions
             webView.setWebChromeClient(new BridgeWebChromeClient(getBridge()) {
