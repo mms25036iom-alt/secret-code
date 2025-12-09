@@ -25,8 +25,7 @@ const isNativePlatform = () => {
 // Option 1: Use environment variable (recommended for production)
 // Set VITE_API_URL in .env file
 
-// Option 2: Use deployed backend URL (works from anywhere)
-// UPDATE THIS with your actual Render URL after deploying
+// Production backend URL on Render
 const DEPLOYED_API_URL = 'https://cureon-backend.onrender.com';
 
 // Option 3: Auto-detect for local development
@@ -70,7 +69,9 @@ export const API_BASE_URL = (() => {
 })();
 
 // Socket.IO URL (same as API base URL)
-export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || API_BASE_URL;
+export const SOCKET_URL = (import.meta.env.VITE_SOCKET_URL && import.meta.env.VITE_SOCKET_URL !== 'auto') 
+  ? import.meta.env.VITE_SOCKET_URL 
+  : API_BASE_URL;
 
 // API Version
 export const API_VERSION = 'v1';

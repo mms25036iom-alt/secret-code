@@ -95,30 +95,33 @@ export const loadUser = () => async (dispatch) => {
 export const logout = () => async (dispatch) => {
     try {
         // Call backend logout to clear session cookie
-        await axios.get(`/logout`)
+        await axios.get(`/logout`);
         
         // Dispatch logout success
-        dispatch({ type: LOGOUT_SUCCESS })
+        dispatch({ type: LOGOUT_SUCCESS });
         
         // Clear ALL browser storage
-        localStorage.clear()
-        sessionStorage.clear()
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('persist:root');
+        sessionStorage.clear();
         
         // Clear all cookies
         document.cookie.split(";").forEach(function(c) { 
             document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
         });
         
-        // Small delay to ensure everything is cleared
-        setTimeout(() => {
-            // Force reload to login page
-            window.location.href = '/login'
-        }, 100);
+        // Force reload to login page
+        window.location.replace('/login');
     } catch (error) {
-        // Even if backend fails, clear frontend
-        localStorage.clear()
-        sessionStorage.clear()
-        window.location.href = '/login'
+        console.error('Logout error:', error);
+        // Even if backend fails, clear frontend and logout
+        dispatch({ type: LOGOUT_SUCCESS });
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('persist:root');
+        sessionStorage.clear();
+        window.location.replace('/login');
     }
 }
 
