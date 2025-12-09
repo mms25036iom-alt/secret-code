@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { ZegoUIKitPrebuilt } from '@zegocloud/zego-uikit-prebuilt';
 import { toast } from 'react-toastify';
+import { createPortal } from 'react-dom';
 
 const ZegoVideoCall = () => {
   const [searchParams] = useSearchParams();
@@ -14,6 +15,43 @@ const ZegoVideoCall = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const initAttempted = useRef(false);
+  const [portalContainer, setPortalContainer] = useState(null);
+
+  // Create portal container and hide app UI
+  useLayoutEffect(() => {
+    // Create a container for the video call that renders at body level
+    const container = document.createElement('div');
+    container.id = 'video-call-portal';
+    container.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99999;background:#000;';
+    document.body.appendChild(container);
+    setPortalContainer(container);
+
+    // Hide navbar, footer, bottom nav
+    const navbar = document.querySelector('nav');
+    const footer = document.querySelector('footer');
+    const bottomNav = document.querySelector('.bottom-nav, [class*="BottomNav"]');
+    const mainContent = document.querySelector('.pt-20');
+    
+    if (navbar) navbar.style.display = 'none';
+    if (footer) footer.style.display = 'none';
+    if (bottomNav) bottomNav.style.display = 'none';
+    if (mainContent) mainContent.style.padding = '0';
+    
+    // Prevent body scroll
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      // Cleanup: restore UI elements
+      if (container.parentNode) {
+        container.parentNode.removeChild(container);
+      }
+      if (navbar) navbar.style.display = '';
+      if (footer) footer.style.display = '';
+      if (bottomNav) bottomNav.style.display = '';
+      if (mainContent) mainContent.style.padding = '';
+      document.body.style.overflow = '';
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -27,6 +65,9 @@ const ZegoVideoCall = () => {
       navigate('/appointments');
       return;
     }
+
+    // Wait for portal container to be ready
+    if (!portalContainer) return;
 
     // Prevent double initialization
     if (initAttempted.current) return;
@@ -47,7 +88,7 @@ const ZegoVideoCall = () => {
         }
       }
     };
-  }, [user, roomId, navigate]);
+  }, [user, roomId, navigate, portalContainer]);
 
   const initVideoCall = async () => {
     try {
@@ -146,59 +187,110 @@ const ZegoVideoCall = () => {
     }
   };
 
-  if (error) {
-    return (
-      <div className="w-full h-screen flex items-center justify-center bg-gray-900">
-        <div className="bg-white rounded-xl p-6 max-w-sm mx-4 text-center">
-          <h2 className="text-xl font-bold text-red-600 mb-2">Error</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => navigate('/telemedicine')}
-              className="flex-1 px-4 py-2 bg-gray-200 rounded-lg"
-            >
-              Go Back
-            </button>
-            <button
-              onClick={() => {
-                initAttempted.current = false;
-                setError(null);
-                initVideoCall();
-              }}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg"
-            >
-              Retry
-            </button>
+  // Render content
+  const renderContent = () => {
+    if (error) {
+      return (
+        <div className="error-container">
+          <div className="error-box">
+            <h2>Error</h2>
+            <p>{error}</p>
+            <div className="error-buttons">
+              <button onClick={() => navigate('/telemedicine')} className="btn-secondary">
+                Go Back
+              </button>
+              <button
+                onClick={() => {
+                  initAttempted.current = false;
+                  setError(null);
+                  initVideoCall();
+                }}
+                className="btn-primary"
+              >
+                Retry
+              </button>
+            </div>
           </div>
         </div>
+      );
+    }
+
+    return (
+      <>
+        {isLoading && (
+          <div className="loading-overlay">
+            <div className="spinner"></div>
+            <p>Connecting to video call...</p>
+            <p className="loading-hint">Please allow camera and microphone access</p>
+          </div>
+        )}
+        <div 
+          ref={containerRef} 
+          className="video-container"
+          style={{
+            width: '100%',
+            height: '100%',
+            minHeight: '100vh',
+            minWidth: '100vw',
+            position: 'absolute',
+            top: 0,
+            left: 0
+          }}
+        />
+      </>
+    );
+  };
+
+  // Use portal to render outside the app layout
+  if (!portalContainer) {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        background: '#000',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'white',
+        zIndex: 99999
+      }}>
+        <div className="spinner" style={{
+          width: 50,
+          height: 50,
+          border: '4px solid rgba(255,255,255,0.3)',
+          borderTopColor: '#3b82f6',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }}></div>
       </div>
     );
   }
 
-  return (
-    <div className="video-call-page">
-      {isLoading && (
-        <div className="loading-overlay">
-          <div className="spinner"></div>
-          <p>Connecting...</p>
-        </div>
-      )}
-      <div ref={containerRef} className="video-container" />
-      
+  return createPortal(
+    <div className="video-call-wrapper">
+      {renderContent()}
       <style>{`
-        .video-call-page {
+        .video-call-wrapper {
           width: 100vw;
           height: 100vh;
-          position: fixed;
-          top: 0;
-          left: 0;
+          position: relative;
           background: #000;
           overflow: hidden;
         }
         
         .video-container {
-          width: 100%;
-          height: 100%;
+          width: 100% !important;
+          height: 100% !important;
+          min-height: 100vh !important;
+        }
+        
+        /* Ensure ZegoCloud elements fill the container */
+        .video-container > div {
+          width: 100% !important;
+          height: 100% !important;
         }
         
         .loading-overlay {
@@ -207,13 +299,19 @@ const ZegoVideoCall = () => {
           left: 0;
           right: 0;
           bottom: 0;
-          background: rgba(0,0,0,0.9);
+          background: rgba(0,0,0,0.95);
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          z-index: 9999;
+          z-index: 10000;
           color: white;
+        }
+        
+        .loading-hint {
+          font-size: 14px;
+          color: #888;
+          margin-top: 8px;
         }
         
         .spinner {
@@ -229,8 +327,65 @@ const ZegoVideoCall = () => {
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
+        
+        .error-container {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #111;
+        }
+        
+        .error-box {
+          background: white;
+          border-radius: 12px;
+          padding: 24px;
+          max-width: 350px;
+          margin: 16px;
+          text-align: center;
+        }
+        
+        .error-box h2 {
+          color: #dc2626;
+          font-size: 20px;
+          font-weight: bold;
+          margin-bottom: 8px;
+        }
+        
+        .error-box p {
+          color: #666;
+          margin-bottom: 16px;
+        }
+        
+        .error-buttons {
+          display: flex;
+          gap: 8px;
+        }
+        
+        .btn-secondary {
+          flex: 1;
+          padding: 10px 16px;
+          background: #e5e7eb;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: 500;
+        }
+        
+        .btn-primary {
+          flex: 1;
+          padding: 10px 16px;
+          background: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: 500;
+        }
       `}</style>
-    </div>
+    </div>,
+    portalContainer
   );
 };
 
