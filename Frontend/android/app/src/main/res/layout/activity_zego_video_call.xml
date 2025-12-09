@@ -3,4 +3,6 @@
     android:id="@+id/zego_call_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000" />
+    android:background="#000000"
+    android:fitsSystemWindows="false"
+    android:keepScreenOn="true" />

@@ -59,6 +59,35 @@ const ZegoVideoCall = () => {
         console.log('🎥 Starting video call initialization...');
         console.log('📱 Platform:', { isAndroid, isCapacitor, isMobile });
 
+        // CRITICAL: Verify container exists and has dimensions BEFORE initializing Zego
+        if (!mounted || !containerRef.current) {
+          console.log('⚠️ Component unmounted or container not ready');
+          return;
+        }
+
+        // Force container to have explicit dimensions
+        const container = containerRef.current;
+        container.style.width = '100%';
+        container.style.height = '100%';
+        container.style.display = 'block';
+        container.style.position = 'absolute';
+        container.style.top = '0';
+        container.style.left = '0';
+        container.style.right = '0';
+        container.style.bottom = '0';
+
+        // Verify container has computed dimensions
+        const rect = container.getBoundingClientRect();
+        console.log('📐 Container dimensions:', {
+          width: rect.width,
+          height: rect.height,
+          viewport: { width: window.innerWidth, height: window.innerHeight }
+        });
+
+        if (rect.width === 0 || rect.height === 0) {
+          throw new Error('Container has zero dimensions. Cannot initialize video.');
+        }
+
         const userId = (user._id || `user_${Date.now()}`).replace(/[^a-zA-Z0-9_]/g, '_');
         const userName = user.name || 'User';
 
@@ -81,19 +110,10 @@ const ZegoVideoCall = () => {
         );
         console.log('✅ Token generated');
 
-        // Create instance
+        // Create instance AFTER container is ready
         zp = ZegoUIKitPrebuilt.create(kitToken);
         zegoRef.current = zp;
         console.log('✅ ZegoUIKit instance created');
-
-        if (!mounted || !containerRef.current) {
-          console.log('⚠️ Component unmounted');
-          return;
-        }
-
-        // Ensure container has dimensions
-        containerRef.current.style.width = '100vw';
-        containerRef.current.style.height = '100vh';
 
         // Configuration - simplified for Android compatibility
         const config = {
@@ -112,11 +132,16 @@ const ZegoVideoCall = () => {
           turnOnMicrophoneWhenJoining: true,
           turnOnCameraWhenJoining: true,
           useFrontFacingCamera: true,
-          
-          // Use lower resolution on mobile for better compatibility
-          videoResolutionDefault: isMobile 
-            ? ZegoUIKitPrebuilt.VideoResolution_180P 
-            : ZegoUIKitPrebuilt.VideoResolution_360P,
+
+          // Use appropriate resolution for better compatibility
+          // 360P is more stable than 180P for most devices
+          videoResolutionDefault: isMobile
+            ? ZegoUIKitPrebuilt.VideoResolution_360P
+            : ZegoUIKitPrebuilt.VideoResolution_720P,
+
+          // Additional video settings for stability
+          showNonVideoUser: true,
+          maxUsers: 2,
           
           // UI Controls
           showMyCameraToggleButton: true,
@@ -169,12 +194,27 @@ const ZegoVideoCall = () => {
       }
     };
 
-    // Delay initialization slightly for DOM to be ready
-    const timeout = setTimeout(initZego, 500);
+    // Use requestAnimationFrame to ensure DOM is fully painted and ready
+    // This is more reliable than setTimeout for visual elements
+    let rafId;
+    const delayedInit = () => {
+      rafId = requestAnimationFrame(() => {
+        // Double RAF to ensure layout is complete
+        rafId = requestAnimationFrame(() => {
+          if (mounted) {
+            initZego();
+          }
+        });
+      });
+    };
+
+    delayedInit();
 
     return () => {
       mounted = false;
-      clearTimeout(timeout);
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
       if (zegoRef.current) {
         try {
           zegoRef.current.destroy();

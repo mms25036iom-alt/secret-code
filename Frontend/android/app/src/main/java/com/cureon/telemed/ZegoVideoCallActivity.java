@@ -63,9 +63,18 @@ public class ZegoVideoCallActivity extends AppCompatActivity {
                     | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                 );
             }
-            
+
             setContentView(R.layout.activity_zego_video_call);
             Log.d(TAG, "Layout set successfully");
+
+            // Force layout to be measured immediately
+            View rootView = findViewById(android.R.id.content);
+            if (rootView != null) {
+                rootView.post(() -> {
+                    rootView.requestLayout();
+                    Log.d(TAG, "Layout pass requested");
+                });
+            }
 
             // Get data from intent
             roomID = getIntent().getStringExtra("roomID");
@@ -192,10 +201,13 @@ public class ZegoVideoCallActivity extends AppCompatActivity {
                 ? ZegoUIKitPrebuiltCallConfig.oneOnOneVideoCall()
                 : ZegoUIKitPrebuiltCallConfig.oneOnOneVoiceCall();
 
-            // Customize the config
+            // Customize the config for better video rendering
             config.turnOnCameraWhenJoining = isVideoCall;
             config.turnOnMicrophoneWhenJoining = true;
             config.useSpeakerWhenJoining = true;
+
+            // IMPORTANT: Enable video view when user joins - prevents black screen
+            config.audioVideoViewConfig.useVideoViewAspectFill = true;
 
             // Add hang up confirmation
             config.hangUpConfirmDialogInfo = new ZegoHangUpConfirmDialogInfo();

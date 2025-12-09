@@ -42,8 +42,8 @@
             android:name=".ZegoVideoCallActivity"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
             android:theme="@style/Theme.AppCompat.NoActionBar"
-            android:screenOrientation="portrait"
             android:hardwareAccelerated="true"
+            android:launchMode="singleTop"
             android:exported="false" />
     </application>
 
